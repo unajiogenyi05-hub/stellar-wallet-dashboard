@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Stellar Wallet Dashboard — view balances, transactions, and account info for any Stellar address."
+    />
+    <title>Stellar Wallet Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌟</text></svg>"
+    />
+  </head>
+  <body>
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">
+          <span class="logo-icon">🌟</span>
+          <span class="logo-text">Stellar Wallet Dashboard</span>
+        </div>
+        <nav class="nav-links">
+          <a href="https://stellar.org" target="_blank" rel="noopener">Stellar.org</a>
+          <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Search Section -->
+      <section class="search-section">
+        <h1 class="hero-title">Explore Any Stellar Wallet</h1>
+        <p class="hero-subtitle">
+          Enter a Stellar public key to view balances, recent transactions, and account details.
+        </p>
+        <div class="search-bar">
+          <input
+            type="text"
+            id="addressInput"
+            class="search-input"
+            placeholder="G... (Stellar public key)"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Stellar public key"
+          />
+          <button id="searchBtn" class="search-btn" aria-label="Search wallet">
+            <span class="btn-text">Search</span>
+            <span class="btn-spinner hidden" aria-hidden="true">⏳</span>
+          </button>
+        </div>
+        <p id="errorMsg" class="error-msg hidden" role="alert"></p>
+        <div class="example-addresses">
+          <span class="example-label">Try an example:</span>
+          <button class="example-btn" data-address="GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN">
+            Example 1
+          </button>
+          <button class="example-btn" data-address="GBVUDZPRUKM2WOHLILAQVP75HQMWBLQNZ7DGOOSNFM6ZNKGCEIPV7NS">
+            Example 2
+          </button>
+        </div>
+      </section>
+
+      <!-- Results Section (hidden until search) -->
+      <section id="resultsSection" class="results-section hidden">
+
+        <!-- Account Overview -->
+        <div class="card account-card">
+          <div class="card-header">
+            <h2 class="card-title">Account Overview</h2>
+            <span id="accountNetwork" class="network-badge">Mainnet</span>
+          </div>
+          <div class="account-address-row">
+            <span id="accountAddress" class="account-address"></span>
+            <button id="copyBtn" class="copy-btn" title="Copy address" aria-label="Copy address">
+              📋
+            </button>
+          </div>
+          <div class="account-stats">
+            <div class="stat-item">
+              <span class="stat-label">Sequence Number</span>
+              <span id="sequenceNumber" class="stat-value">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Subentry Count</span>
+              <span id="subentryCount" class="stat-value">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Home Domain</span>
+              <span id="homeDomain" class="stat-value">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Last Modified</span>
+              <span id="lastModified" class="stat-value">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Balances -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Balances</h2>
+            <span id="balanceCount" class="badge"></span>
+          </div>
+          <div id="balancesList" class="balances-list"></div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Recent Transactions</h2>
+            <span id="txCount" class="badge"></span>
+          </div>
+          <div id="transactionsList" class="transactions-list"></div>
+          <button id="loadMoreBtn" class="load-more-btn hidden">Load More</button>
+        </div>
+
+      </section>
+
+      <!-- Empty state -->
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">🔭</div>
+        <p>Enter a Stellar public key above to get started.</p>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <p>
+        Built with ❤️ using the
+        <a href="https://developers.stellar.org/docs/data/apis/horizon" target="_blank" rel="noopener">
+          Stellar Horizon API
+        </a>
+        · Data is live from the Stellar network ·
+        <a href="https://github.com" target="_blank" rel="noopener">View on GitHub</a>
+      </p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

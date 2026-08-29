@@ -1,0 +1,38 @@
+{
+  "name": "stellar-wallet-dashboard",
+  "version": "1.0.0",
+  "description": "A clean, open-source web dashboard for exploring any Stellar wallet — balances, transactions, and account details via the Horizon API.",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . --listen 8080",
+    "lint": "npx eslint app.js"
+  },
+  "keywords": [
+    "stellar",
+    "xlm",
+    "blockchain",
+    "wallet",
+    "dashboard",
+    "horizon",
+    "cryptocurrency",
+    "open-source"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/stellar-wallet-dashboard.git"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/stellar-wallet-dashboard#readme",
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/stellar-wallet-dashboard/issues"
+  },
+  "devDependencies": {
+    "serve": "14.2.3",
+    "eslint": "8.57.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
