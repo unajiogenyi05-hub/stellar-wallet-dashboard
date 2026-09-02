@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta
       name="description"
       content="Stellar Wallet Dashboard — view balances, transactions, and account info for any Stellar address."
-    />
+    >
     <title>Stellar Wallet Dashboard</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css">
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌟</text></svg>"
-    />
+    >
   </head>
   <body>
     <header class="header">
@@ -23,7 +23,7 @@
         </div>
         <nav class="nav-links">
           <a href="https://stellar.org" target="_blank" rel="noopener">Stellar.org</a>
-          <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard" target="_blank" rel="noopener">GitHub</a>
         </nav>
       </div>
     </header>
@@ -44,8 +44,8 @@
             autocomplete="off"
             spellcheck="false"
             aria-label="Stellar public key"
-          />
-          <button id="searchBtn" class="search-btn" aria-label="Search wallet">
+          >
+          <button type="button" id="searchBtn" class="search-btn" aria-label="Search wallet">
             <span class="btn-text">Search</span>
             <span class="btn-spinner hidden" aria-hidden="true">⏳</span>
           </button>
@@ -53,10 +53,10 @@
         <p id="errorMsg" class="error-msg hidden" role="alert"></p>
         <div class="example-addresses">
           <span class="example-label">Try an example:</span>
-          <button class="example-btn" data-address="GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN">
+          <button type="button" class="example-btn" data-address="GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN">
             Example 1
           </button>
-          <button class="example-btn" data-address="GBVUDZPRUKM2WOHLILAQVP75HQMWBLQNZ7DGOOSNFM6ZNKGCEIPV7NS">
+          <button type="button" class="example-btn" data-address="GBVUDZPRUKM2WOHLILAQVP75HQMWBLQNZ7DGOOSNFM6ZNKGCEIPV7NS">
             Example 2
           </button>
         </div>
@@ -73,7 +73,7 @@
           </div>
           <div class="account-address-row">
             <span id="accountAddress" class="account-address"></span>
-            <button id="copyBtn" class="copy-btn" title="Copy address" aria-label="Copy address">
+            <button type="button" id="copyBtn" class="copy-btn" title="Copy address" aria-label="Copy address">
               📋
             </button>
           </div>
@@ -113,7 +113,7 @@
             <span id="txCount" class="badge"></span>
           </div>
           <div id="transactionsList" class="transactions-list"></div>
-          <button id="loadMoreBtn" class="load-more-btn hidden">Load More</button>
+          <button type="button" id="loadMoreBtn" class="load-more-btn hidden">Load More</button>
         </div>
 
       </section>
@@ -132,7 +132,7 @@
           Stellar Horizon API
         </a>
         · Data is live from the Stellar network ·
-        <a href="https://github.com" target="_blank" rel="noopener">View on GitHub</a>
+        <a href="https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard" target="_blank" rel="noopener">View on GitHub</a>
       </p>
     </footer>
 
