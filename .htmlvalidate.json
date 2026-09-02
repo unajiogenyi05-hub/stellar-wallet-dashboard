@@ -1,0 +1,9 @@
+{
+  "extends": ["html-validate:recommended"],
+  "rules": {
+    "void-style": ["error", { "style": "omit" }],
+    "no-implicit-button-type": "error",
+    "long-title": "off",
+    "no-inline-style": "off"
+  }
+}
