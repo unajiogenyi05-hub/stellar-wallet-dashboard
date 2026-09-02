@@ -2,7 +2,7 @@
 
 A clean, fast, open-source web dashboard for exploring any Stellar wallet. Enter a Stellar public key and instantly view balances, recent transactions, and account details — all powered by the live Stellar Horizon API.
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://unajiogenyi05-hub.github.io/stellar-wallet-dashboard)
+[![CI](https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## ✨ Features
@@ -43,7 +43,7 @@ Then visit `http://localhost:8080` in your browser.
 ## 🛠️ Tech Stack
 
 | Layer      | Technology                  |
-|------------|-----------------------------|
+|------------|------------------------------|
 | Structure  | HTML5                        |
 | Styling    | Vanilla CSS (CSS variables)  |
 | Logic      | Vanilla JavaScript (ES2020)  |
@@ -63,13 +63,20 @@ Full API documentation: [developers.stellar.org](https://developers.stellar.org/
 
 ```
 stellar-wallet-dashboard/
-├── index.html          # Main HTML page
-├── styles.css          # All CSS styles
-├── app.js              # JavaScript logic (Horizon API calls, rendering)
-├── README.md           # This file
-├── CONTRIBUTING.md     # How to contribute
-├── package.json        # Project metadata
+├── index.html              # Main HTML page
+├── styles.css              # All CSS styles
+├── app.js                  # JavaScript logic (Horizon API calls, rendering)
+├── README.md               # This file
+├── CHANGELOG.md            # Project changelog
+├── SECURITY.md             # Security policy and data architecture
+├── CONTRIBUTING.md         # How to contribute
+├── package.json            # Project metadata and dev dependencies
+├── package-lock.json       # Locked dependency tree
+├── .eslintrc.json          # ESLint configuration
+├── .htmlvalidate.json      # HTML validation configuration
 └── .github/
+    ├── workflows/
+    │   └── ci.yml          # CI: ESLint + HTML validation on every push/PR
     └── ISSUE_TEMPLATE/
         ├── bug_report.md
         └── feature_request.md
@@ -101,6 +108,10 @@ Look for issues labeled `good first issue` or `trivial` — these are great star
 - Horizon public API retains only ~1 year of historical data
 - Very new accounts (unfunded) will return a "not found" error
 - Rate limiting may apply for frequent lookups
+
+## 🔒 Security
+
+This is a pure read-only dashboard. It never requests, accepts, or stores private keys or seed phrases. See [SECURITY.md](SECURITY.md) for the full data architecture statement.
 
 ## 📜 License
 
