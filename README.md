@@ -2,7 +2,8 @@
 
 A clean, fast, open-source web dashboard for exploring any Stellar wallet. Enter a Stellar public key and instantly view balances, recent transactions, and account details — all powered by the live Stellar Horizon API.
 
-![Stellar Wallet Dashboard screenshot](https://via.placeholder.com/900x500/0d1117/4f8ef7?text=Stellar+Wallet+Dashboard)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://unajiogenyi05-hub.github.io/stellar-wallet-dashboard)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## ✨ Features
 
@@ -20,7 +21,7 @@ A clean, fast, open-source web dashboard for exploring any Stellar wallet. Enter
 No installation needed. Just open the file in your browser:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/stellar-wallet-dashboard.git
+git clone https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard.git
 cd stellar-wallet-dashboard
 open index.html   # macOS
 # or: xdg-open index.html  (Linux)
