@@ -22,11 +22,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/stellar-wallet-dashboard.git"
+    "url": "https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard.git"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/stellar-wallet-dashboard#readme",
+  "homepage": "https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard#readme",
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/stellar-wallet-dashboard/issues"
+    "url": "https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard/issues"
   },
   "devDependencies": {
     "serve": "14.2.3",
