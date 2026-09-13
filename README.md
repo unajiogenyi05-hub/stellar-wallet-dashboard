@@ -88,10 +88,6 @@ Contributions are welcome! Whether it's a bug fix, a new feature, improved docum
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-### Good First Issues
-
-Look for issues labeled `good first issue` or `trivial` — these are great starting points for new contributors.
-
 ## 📋 Roadmap
 
 - [ ] Add support for Stellar Testnet
