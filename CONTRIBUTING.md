@@ -35,10 +35,6 @@ Found a bug? Open an issue using the **Bug Report** template. Include:
 
 Have an idea? Open a **Feature Request** issue. Describe what you want and why it would be useful.
 
-### 3. Fixing Issues
-
-Browse [open issues](../../issues). Issues labeled `good first issue` or `trivial` are ideal for new contributors.
-
 ---
 
 ## Development Setup
