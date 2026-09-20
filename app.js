@@ -387,3 +387,260 @@ document.querySelectorAll('.example-btn').forEach((btn) => {
     lookupWallet(addr);
   });
 });
+
+// ═══ Soroban Contract Explorer ══════════════════════════════════════════════
+
+const SOROBAN_RPC_TESTNET = 'https://soroban-testnet.stellar.org';
+const SOROBAN_RPC_MAINNET = 'https://soroban-mainnet.stellar.org';
+
+const contractInput      = document.getElementById('contractInput');
+const contractSearchBtn  = document.getElementById('contractSearchBtn');
+const contractErrorMsg   = document.getElementById('contractErrorMsg');
+const contractResults    = document.getElementById('contractResults');
+const contractIdDisplay  = document.getElementById('contractIdDisplay');
+const contractNetwork    = document.getElementById('contractNetwork');
+const contractEntryCount = document.getElementById('contractEntryCount');
+const contractWasmHash   = document.getElementById('contractWasmHash');
+const contractEntriesList = document.getElementById('contractEntriesList');
+const useTestnetToggle   = document.getElementById('useTestnet');
+
+function showContractError(msg) {
+  contractErrorMsg.textContent = msg;
+  contractErrorMsg.classList.remove('hidden');
+}
+
+function clearContractError() {
+  contractErrorMsg.textContent = '';
+  contractErrorMsg.classList.add('hidden');
+}
+
+/**
+ * Call the Soroban JSON-RPC 2.0 API.
+ * @param {string} rpcUrl
+ * @param {string} method
+ * @param {object} params
+ * @returns {Promise<any>}
+ */
+async function sorobanRpc(rpcUrl, method, params) {
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method,
+      params,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`RPC HTTP error: ${response.status}`);
+  }
+  const data = await response.json();
+  if (data.error) {
+    throw new Error(`RPC error: ${data.error.message || JSON.stringify(data.error)}`);
+  }
+  return data.result;
+}
+
+/**
+ * Fetch ledger entries for a Soroban contract.
+ * Uses getLedgerEntries with the contract instance key.
+ * @param {string} contractId - Strkey-encoded contract ID (C...)
+ * @param {string} rpcUrl
+ */
+async function fetchContractData(contractId, rpcUrl) {
+  // Build the contract instance ledger key in XDR base64.
+  // The key for a contract's instance storage is:
+  //   LedgerKey.contractData({ contract: Address(contractId), key: LedgerKey_ContractInstance, durability: Persistent })
+  // We use getLedgerEntries with the raw XDR key derived from the contract address.
+  // Since we have no SDK, we use getContractData (legacy) if available, or
+  // fall back to getLatestLedger + getLedgerEntries with a known key pattern.
+
+  // Step 1: verify the contract exists by calling getLedgerEntries with the
+  // CONTRACT_INSTANCE key. The XDR for this is derivable but requires an SDK.
+  // Instead, we use a simpler approach: call simulateTransaction or
+  // getLedgerEntries with the contract instance key.
+
+  // Practical approach without SDK: use getLedgerEntries with the
+  // pre-computed base64 XDR for the contract instance key.
+  // The contract instance key XDR encodes as:
+  //   type=ContractData, contract=<contractId>, key=LedgerKeyContractInstance, durability=Persistent
+
+  // We can generate the key using Stellar base32 decoding.
+  // Contract IDs starting with 'C' are Strkey contract addresses (32 bytes).
+  // XDR layout for LedgerKey.contractData instance key is well-known.
+
+  // For dashboard purposes: call `getLedgerEntries` with the
+  // contract instance XDR key. Since we lack SDK, we derive it manually:
+
+  // Strkey decode: strip 'C' discriminant (version byte = 2), decode base32,
+  // drop 2-byte checksum → 32 raw bytes (contract hash).
+
+  const contractBytes = strKeyToBytes(contractId);
+  if (!contractBytes) {
+    throw new Error('Invalid contract ID — must start with C and be 56 characters.');
+  }
+
+  // Build the XDR for LedgerKey.contractData(contract, LedgerKeyContractInstance, Persistent)
+  // This is a deterministic encoding we can compute without the SDK.
+  const instanceKeyXdr = buildContractInstanceKey(contractBytes);
+
+  const result = await sorobanRpc(rpcUrl, 'getLedgerEntries', {
+    keys: [instanceKeyXdr],
+  });
+
+  return result;
+}
+
+/**
+ * Decode a Stellar Strkey (C... contract address) to 32 raw bytes.
+ * Returns null if invalid.
+ * @param {string} strkey
+ * @returns {Uint8Array|null}
+ */
+function strKeyToBytes(strkey) {
+  if (!strkey || strkey.length !== 56 || strkey[0] !== 'C') return null;
+
+  // Base32 alphabet
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const str = strkey.toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const bytes = [];
+
+  for (let i = 0; i < str.length; i++) {
+    const idx = ALPHABET.indexOf(str[i]);
+    if (idx === -1) return null;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+
+  // bytes[0] = version byte (0x02 for contract), bytes[1..32] = contract hash,
+  // bytes[33..34] = checksum (drop)
+  if (bytes.length < 34 || bytes[0] !== 0x02) return null;
+  return new Uint8Array(bytes.slice(1, 33));
+}
+
+/**
+ * Build the XDR base64 for a LedgerKey.contractData(contractInstance) key.
+ * Layout (big-endian):
+ *   LedgerKey discriminant = 6 (ContractData) : 4 bytes
+ *   contract discriminant = 1 (Address type ScAddress_Contract): 4 bytes
+ *   contract hash: 32 bytes
+ *   key discriminant = LedgerKeyContractInstance (0x0b in ScVal): 4 bytes (value = 11)
+ *   durability = Persistent (1): 4 bytes
+ * Total: 48 bytes → base64
+ *
+ * @param {Uint8Array} contractHash - 32 bytes
+ * @returns {string} base64-encoded XDR
+ */
+function buildContractInstanceKey(contractHash) {
+  const buf = new Uint8Array(48);
+  const view = new DataView(buf.buffer);
+
+  // LedgerKey discriminant: CONTRACT_DATA = 6
+  view.setUint32(0, 6);
+  // ScAddress discriminant: CONTRACT = 1
+  view.setUint32(4, 1);
+  // 32-byte contract hash
+  buf.set(contractHash, 8);
+  // ScVal discriminant for LedgerKeyContractInstance: SCV_LEDGER_KEY_CONTRACT_INSTANCE = 11
+  view.setUint32(40, 11);
+  // ContractDataDurability: PERSISTENT = 1
+  view.setUint32(44, 1);
+
+  return btoa(String.fromCharCode(...buf));
+}
+
+/**
+ * Parse ledger entry XDR responses for display (basic, no SDK).
+ * Returns an array of {key, value} display objects.
+ */
+function parseLedgerEntries(entries) {
+  if (!entries || !Array.isArray(entries)) return [];
+  return entries.map((entry, i) => ({
+    key: `Entry ${i + 1}`,
+    xdr: entry.xdr || entry.key || '(raw XDR)',
+    lastModifiedLedger: entry.lastModifiedLedgerSeq || '—',
+  }));
+}
+
+/**
+ * Main handler: look up a Soroban contract.
+ */
+async function inspectContract() {
+  const id = contractInput.value.trim();
+  clearContractError();
+  contractResults.classList.add('hidden');
+
+  if (!id) {
+    showContractError('Please enter a contract ID.');
+    return;
+  }
+
+  if (!/^C[A-Z2-7]{55}$/.test(id)) {
+    showContractError('Invalid contract ID. It should start with "C" and be 56 characters long.');
+    return;
+  }
+
+  const isTestnet = useTestnetToggle.checked;
+  const rpcUrl = isTestnet ? SOROBAN_RPC_TESTNET : SOROBAN_RPC_MAINNET;
+  const networkLabel = isTestnet ? 'Testnet' : 'Mainnet';
+
+  contractSearchBtn.disabled = true;
+  contractSearchBtn.querySelector('.btn-text').textContent = 'Loading…';
+
+  try {
+    const result = await fetchContractData(id, rpcUrl);
+    const entries = result.entries || [];
+
+    contractIdDisplay.textContent = id;
+    contractNetwork.textContent = networkLabel;
+    contractEntryCount.textContent = entries.length;
+
+    // Try to show wasm hash from the instance entry
+    if (entries.length > 0) {
+      // The wasm hash is embedded in the first entry XDR — show truncated
+      const xdr = entries[0].xdr || '';
+      contractWasmHash.textContent = xdr ? truncateMiddle(xdr, 20, 20) : '(see raw XDR)';
+    } else {
+      contractWasmHash.textContent = 'No entries found';
+    }
+
+    // Render entries
+    contractEntriesList.innerHTML = '';
+    if (entries.length === 0) {
+      contractEntriesList.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.875rem;">No ledger entries found for this contract.</p>';
+    } else {
+      const parsed = parseLedgerEntries(entries);
+      parsed.forEach((e) => {
+        const item = document.createElement('div');
+        item.className = 'entry-item';
+        item.innerHTML = `
+          <div class="entry-header">
+            <span class="entry-key">${e.key}</span>
+            <span class="entry-ledger">Last modified: ledger #${e.lastModifiedLedger.toLocaleString ? e.lastModifiedLedger.toLocaleString() : e.lastModifiedLedger}</span>
+          </div>
+          <div class="entry-xdr" title="${e.xdr}">${truncateMiddle(e.xdr, 40, 40)}</div>
+        `;
+        contractEntriesList.appendChild(item);
+      });
+    }
+
+    contractResults.classList.remove('hidden');
+  } catch (err) {
+    showContractError(err.message || 'Failed to fetch contract data.');
+  } finally {
+    contractSearchBtn.disabled = false;
+    contractSearchBtn.querySelector('.btn-text').textContent = 'Inspect';
+  }
+}
+
+contractSearchBtn.addEventListener('click', inspectContract);
+contractInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') inspectContract();
+});

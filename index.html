@@ -123,6 +123,67 @@
         <div class="empty-icon">🔭</div>
         <p>Enter a Stellar public key above to get started.</p>
       </div>
+
+      <!-- ═══ Soroban Contract Explorer ═══════════════════════════════════════════ -->
+      <section class="soroban-section" id="sorobanSection">
+        <h2 class="section-title">🔬 Soroban Contract Explorer</h2>
+        <p class="section-subtitle">Enter a Soroban contract ID to inspect its on-chain state via the Soroban RPC.</p>
+
+        <div class="search-row">
+          <input
+            type="text"
+            id="contractInput"
+            class="address-input"
+            placeholder="Contract ID (e.g. CABC…)"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="network-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" id="useTestnet" checked />
+              Testnet
+            </label>
+          </div>
+          <button class="btn" id="contractSearchBtn">
+            <span class="btn-text">Inspect</span>
+          </button>
+        </div>
+
+        <p id="contractErrorMsg" class="error-msg hidden"></p>
+
+        <div id="contractResults" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Contract Info</h3>
+            </div>
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="info-label">Contract ID</div>
+                <div class="info-value mono" id="contractIdDisplay">—</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Network</div>
+                <div class="info-value" id="contractNetwork">—</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Ledger Entries</div>
+                <div class="info-value" id="contractEntryCount">—</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Wasm Hash</div>
+                <div class="info-value mono" id="contractWasmHash">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="contractEntriesCard">
+            <div class="card-header">
+              <h3 class="card-title">Storage Entries</h3>
+            </div>
+            <div id="contractEntriesList" class="entries-list"></div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer class="footer">
