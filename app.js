@@ -516,7 +516,7 @@ function decodeEntryXdr(xdrBase64, isInstance) {
             const hashBytes = instance.executable && instance.executable().wasmHash &&
                               instance.executable().wasmHash();
             if (hashBytes) {
-              wasmHash = Buffer.from(hashBytes).toString('hex');
+              wasmHash = Array.from(hashBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
             }
             // Storage map (may be null for contracts with no instance storage)
             const storage = instance.storage && instance.storage();
@@ -578,7 +578,7 @@ function formatNative(val) {
   if (typeof val === 'boolean') return val.toString();
   if (typeof val === 'string') return `"${val}"`;
   if (typeof val === 'number') return val.toString();
-  if (val instanceof Uint8Array || (typeof Buffer !== 'undefined' && val instanceof Buffer)) {
+  if (val instanceof Uint8Array) {
     const hex = Array.from(val).map((b) => b.toString(16).padStart(2, '0')).join('');
     return hex.length > 64 ? `0x${hex.slice(0, 64)}…` : `0x${hex}`;
   }
