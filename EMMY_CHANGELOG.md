@@ -83,3 +83,43 @@ is unreadable to users. SDK-based decoding surfaces actual contract state
 panel genuinely useful for contract inspection.
 
 ---
+## 2026-09-20 (follow-up 2)
+
+### PR: fix/ci-lint-dashboard — Fix ESLint and html-validate CI failures
+
+**Files changed:** `app.js`, `index.html`
+
+**Exact CI errors reproduced and fixed:**
+
+ESLint (`npx eslint app.js`):
+- `519:26  error  'Buffer' is not defined  no-undef`
+- `581:85  error  'Buffer' is not defined  no-undef`
+
+html-validate (`npx html-validate index.html`):
+- `140:11  error  Expected omitted end tag <input> instead of self-closing element <input/>  void-style`
+- `143:62  error  Expected omitted end tag <input> instead of self-closing element <input/>  void-style`
+- `147:12  error  <button> is missing recommended "type" attribute  no-implicit-button-type`
+
+**Root causes and fixes:**
+
+1. `Buffer is not defined` (x2) — ESLint env is `browser: true` only;
+   `Buffer` is a Node.js built-in absent from browsers. Fix: replaced
+   `Buffer.from(hashBytes).toString("hex")` with
+   `Array.from(hashBytes).map((b) => b.toString(16).padStart(2, "0")).join("")`
+   (identical output, pure browser API); removed the dead `instanceof Buffer`
+   branch from `formatNative()` (already unreachable in a browser context).
+   Not added to eslint globals — `Buffer` is not a browser global.
+
+2. `void-style` (x2) — config already enforces `omit` style; the new
+   Soroban panel HTML used self-closing `<input ... />`. Fixed to `<input ...>`.
+
+3. `no-implicit-button-type` — new `<button id="contractSearchBtn">` was
+   missing `type="button"`. Added the attribute.
+
+**No functional code changed.** Only the hex-encoding expression (same
+output) and one dead type-check branch in app.js, plus three HTML attribute
+corrections in the Soroban panel markup.
+
+**Verified locally:** `npx eslint app.js` exit 0; `npx html-validate index.html` exit 0.
+
+---
