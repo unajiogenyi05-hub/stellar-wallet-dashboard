@@ -688,3 +688,31 @@ a:hover, a:focus {
   font-family: monospace;
   font-size: 0.8rem;
 }
+
+/* SDK-decoded entry value */
+.entry-decoded {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  background: var(--color-bg, #ffffff);
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+  word-break: break-all;
+  margin-bottom: 0.4rem;
+}
+
+.entry-raw-details {
+  font-size: 0.75rem;
+}
+
+.entry-raw-details summary {
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+  padding: 0.1rem 0;
+}
+
+.entry-raw-details summary:hover {
+  color: var(--color-text);
+}

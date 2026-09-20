@@ -388,21 +388,25 @@ document.querySelectorAll('.example-btn').forEach((btn) => {
   });
 });
 
-// ═══ Soroban Contract Explorer ══════════════════════════════════════════════
+// ═══ Soroban Contract Explorer (SDK-powered) ════════════════════════════════
+//
+// Uses @stellar/stellar-sdk loaded via CDN (unpkg) for proper XDR decoding.
+// The SDK is loaded as a global (window.StellarSdk) by the script tag in
+// index.html. We fall back gracefully if the SDK fails to load.
 
 const SOROBAN_RPC_TESTNET = 'https://soroban-testnet.stellar.org';
 const SOROBAN_RPC_MAINNET = 'https://soroban-mainnet.stellar.org';
 
-const contractInput      = document.getElementById('contractInput');
-const contractSearchBtn  = document.getElementById('contractSearchBtn');
-const contractErrorMsg   = document.getElementById('contractErrorMsg');
-const contractResults    = document.getElementById('contractResults');
-const contractIdDisplay  = document.getElementById('contractIdDisplay');
-const contractNetwork    = document.getElementById('contractNetwork');
-const contractEntryCount = document.getElementById('contractEntryCount');
-const contractWasmHash   = document.getElementById('contractWasmHash');
+const contractInput       = document.getElementById('contractInput');
+const contractSearchBtn   = document.getElementById('contractSearchBtn');
+const contractErrorMsg    = document.getElementById('contractErrorMsg');
+const contractResults     = document.getElementById('contractResults');
+const contractIdDisplay   = document.getElementById('contractIdDisplay');
+const contractNetwork     = document.getElementById('contractNetwork');
+const contractEntryCount  = document.getElementById('contractEntryCount');
+const contractWasmHash    = document.getElementById('contractWasmHash');
 const contractEntriesList = document.getElementById('contractEntriesList');
-const useTestnetToggle   = document.getElementById('useTestnet');
+const useTestnetToggle    = document.getElementById('useTestnet');
 
 function showContractError(msg) {
   contractErrorMsg.textContent = msg;
@@ -425,71 +429,12 @@ async function sorobanRpc(rpcUrl, method, params) {
   const response = await fetch(rpcUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method,
-      params,
-    }),
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
   });
-  if (!response.ok) {
-    throw new Error(`RPC HTTP error: ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`RPC HTTP error: ${response.status}`);
   const data = await response.json();
-  if (data.error) {
-    throw new Error(`RPC error: ${data.error.message || JSON.stringify(data.error)}`);
-  }
+  if (data.error) throw new Error(`RPC error: ${data.error.message || JSON.stringify(data.error)}`);
   return data.result;
-}
-
-/**
- * Fetch ledger entries for a Soroban contract.
- * Uses getLedgerEntries with the contract instance key.
- * @param {string} contractId - Strkey-encoded contract ID (C...)
- * @param {string} rpcUrl
- */
-async function fetchContractData(contractId, rpcUrl) {
-  // Build the contract instance ledger key in XDR base64.
-  // The key for a contract's instance storage is:
-  //   LedgerKey.contractData({ contract: Address(contractId), key: LedgerKey_ContractInstance, durability: Persistent })
-  // We use getLedgerEntries with the raw XDR key derived from the contract address.
-  // Since we have no SDK, we use getContractData (legacy) if available, or
-  // fall back to getLatestLedger + getLedgerEntries with a known key pattern.
-
-  // Step 1: verify the contract exists by calling getLedgerEntries with the
-  // CONTRACT_INSTANCE key. The XDR for this is derivable but requires an SDK.
-  // Instead, we use a simpler approach: call simulateTransaction or
-  // getLedgerEntries with the contract instance key.
-
-  // Practical approach without SDK: use getLedgerEntries with the
-  // pre-computed base64 XDR for the contract instance key.
-  // The contract instance key XDR encodes as:
-  //   type=ContractData, contract=<contractId>, key=LedgerKeyContractInstance, durability=Persistent
-
-  // We can generate the key using Stellar base32 decoding.
-  // Contract IDs starting with 'C' are Strkey contract addresses (32 bytes).
-  // XDR layout for LedgerKey.contractData instance key is well-known.
-
-  // For dashboard purposes: call `getLedgerEntries` with the
-  // contract instance XDR key. Since we lack SDK, we derive it manually:
-
-  // Strkey decode: strip 'C' discriminant (version byte = 2), decode base32,
-  // drop 2-byte checksum → 32 raw bytes (contract hash).
-
-  const contractBytes = strKeyToBytes(contractId);
-  if (!contractBytes) {
-    throw new Error('Invalid contract ID — must start with C and be 56 characters.');
-  }
-
-  // Build the XDR for LedgerKey.contractData(contract, LedgerKeyContractInstance, Persistent)
-  // This is a deterministic encoding we can compute without the SDK.
-  const instanceKeyXdr = buildContractInstanceKey(contractBytes);
-
-  const result = await sorobanRpc(rpcUrl, 'getLedgerEntries', {
-    keys: [instanceKeyXdr],
-  });
-
-  return result;
 }
 
 /**
@@ -500,88 +445,181 @@ async function fetchContractData(contractId, rpcUrl) {
  */
 function strKeyToBytes(strkey) {
   if (!strkey || strkey.length !== 56 || strkey[0] !== 'C') return null;
-
-  // Base32 alphabet
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   const str = strkey.toUpperCase();
-  let bits = 0;
-  let value = 0;
+  let bits = 0, value = 0;
   const bytes = [];
-
   for (let i = 0; i < str.length; i++) {
     const idx = ALPHABET.indexOf(str[i]);
     if (idx === -1) return null;
     value = (value << 5) | idx;
     bits += 5;
-    if (bits >= 8) {
-      bytes.push((value >>> (bits - 8)) & 0xff);
-      bits -= 8;
-    }
+    if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 0xff); bits -= 8; }
   }
-
-  // bytes[0] = version byte (0x02 for contract), bytes[1..32] = contract hash,
-  // bytes[33..34] = checksum (drop)
   if (bytes.length < 34 || bytes[0] !== 0x02) return null;
   return new Uint8Array(bytes.slice(1, 33));
 }
 
 /**
  * Build the XDR base64 for a LedgerKey.contractData(contractInstance) key.
- * Layout (big-endian):
- *   LedgerKey discriminant = 6 (ContractData) : 4 bytes
- *   contract discriminant = 1 (Address type ScAddress_Contract): 4 bytes
- *   contract hash: 32 bytes
- *   key discriminant = LedgerKeyContractInstance (0x0b in ScVal): 4 bytes (value = 11)
- *   durability = Persistent (1): 4 bytes
- * Total: 48 bytes → base64
- *
- * @param {Uint8Array} contractHash - 32 bytes
- * @returns {string} base64-encoded XDR
+ * Layout (big-endian, 48 bytes total):
+ *   [0-3]  LedgerKey discriminant: CONTRACT_DATA = 6
+ *   [4-7]  ScAddress discriminant: CONTRACT = 1
+ *   [8-39] 32-byte contract hash
+ *   [40-43] ScVal discriminant: SCV_LEDGER_KEY_CONTRACT_INSTANCE = 11
+ *   [44-47] ContractDataDurability: PERSISTENT = 1
+ * @param {Uint8Array} contractHash
+ * @returns {string} base64
  */
 function buildContractInstanceKey(contractHash) {
   const buf = new Uint8Array(48);
   const view = new DataView(buf.buffer);
-
-  // LedgerKey discriminant: CONTRACT_DATA = 6
-  view.setUint32(0, 6);
-  // ScAddress discriminant: CONTRACT = 1
-  view.setUint32(4, 1);
-  // 32-byte contract hash
+  view.setUint32(0, 6);   // CONTRACT_DATA
+  view.setUint32(4, 1);   // ScAddress::Contract
   buf.set(contractHash, 8);
-  // ScVal discriminant for LedgerKeyContractInstance: SCV_LEDGER_KEY_CONTRACT_INSTANCE = 11
-  view.setUint32(40, 11);
-  // ContractDataDurability: PERSISTENT = 1
-  view.setUint32(44, 1);
-
+  view.setUint32(40, 11); // SCV_LEDGER_KEY_CONTRACT_INSTANCE
+  view.setUint32(44, 1);  // PERSISTENT
   return btoa(String.fromCharCode(...buf));
 }
 
 /**
- * Parse ledger entry XDR responses for display (basic, no SDK).
- * Returns an array of {key, value} display objects.
+ * Try to decode a base64 XDR string into a human-readable value using the
+ * stellar-sdk (loaded as window.StellarSdk from CDN).
+ *
+ * For the contract instance entry (the first entry), the XDR is a
+ * LedgerEntryData, not a raw ScVal. We try to parse it as LedgerEntryData
+ * first, then fall back to ScVal, then to a raw hex dump.
+ *
+ * @param {string} xdrBase64 - base64-encoded XDR
+ * @param {boolean} isInstance - true for the instance entry
+ * @returns {{ decoded: string, wasmHash: string|null }}
  */
-function parseLedgerEntries(entries) {
-  if (!entries || !Array.isArray(entries)) return [];
-  return entries.map((entry, i) => ({
-    key: `Entry ${i + 1}`,
-    xdr: entry.xdr || entry.key || '(raw XDR)',
-    lastModifiedLedger: entry.lastModifiedLedgerSeq || '—',
-  }));
+function decodeEntryXdr(xdrBase64, isInstance) {
+  const sdk = window.StellarSdk;
+  if (!sdk) {
+    return { decoded: `(SDK not loaded) ${truncateMiddle(xdrBase64, 30, 30)}`, wasmHash: null };
+  }
+
+  let wasmHash = null;
+
+  try {
+    // Parse as LedgerEntryData
+    const entryData = sdk.xdr.LedgerEntryData.fromXDR(xdrBase64, 'base64');
+    const contractData = entryData.contractData && entryData.contractData();
+    if (contractData) {
+      const val = contractData.val();
+      if (isInstance) {
+        // Instance entry: value is ScContractInstance, contains wasmHash + storage
+        try {
+          const instance = val.instance && val.instance();
+          if (instance) {
+            const hashBytes = instance.executable && instance.executable().wasmHash &&
+                              instance.executable().wasmHash();
+            if (hashBytes) {
+              wasmHash = Buffer.from(hashBytes).toString('hex');
+            }
+            // Storage map (may be null for contracts with no instance storage)
+            const storage = instance.storage && instance.storage();
+            const storageEntries = storage ? storage.length : 0;
+            const decoded = wasmHash
+              ? `instance (wasm: ${wasmHash.slice(0, 16)}…, ${storageEntries} instance-storage entries)`
+              : `instance entry (${storageEntries} instance-storage entries)`;
+            return { decoded, wasmHash };
+          }
+        } catch (_) {
+          // fall through
+        }
+      }
+      // For non-instance entries or if instance parse failed, convert val to native
+      try {
+        const native = sdk.scValToNative(val);
+        return { decoded: formatNative(native), wasmHash };
+      } catch (_) {
+        return { decoded: xdrValTypeLabel(val), wasmHash };
+      }
+    }
+  } catch (_) {
+    // Not a LedgerEntryData — try raw ScVal
+  }
+
+  try {
+    const scVal = sdk.xdr.ScVal.fromXDR(xdrBase64, 'base64');
+    const native = sdk.scValToNative(scVal);
+    return { decoded: formatNative(native), wasmHash };
+  } catch (_) {
+    // Neither worked — show truncated XDR
+    return { decoded: truncateMiddle(xdrBase64, 30, 30), wasmHash };
+  }
 }
 
 /**
- * Main handler: look up a Soroban contract.
+ * Return the ScVal type label as a readable string when native conversion fails.
+ * @param {object} scVal - XDR ScVal object
+ * @returns {string}
+ */
+function xdrValTypeLabel(scVal) {
+  try {
+    const name = scVal && scVal.switch && scVal.switch().name;
+    return name ? `(${name})` : '(unknown ScVal type)';
+  } catch (_) {
+    return '(undecodable)';
+  }
+}
+
+/**
+ * Format a native JS value (output of scValToNative) as a readable string.
+ * Handles BigInt, Buffer, Uint8Array, objects, and primitives.
+ * @param {any} val
+ * @returns {string}
+ */
+function formatNative(val) {
+  if (val === null || val === undefined) return 'null';
+  if (typeof val === 'bigint') return val.toString();
+  if (typeof val === 'boolean') return val.toString();
+  if (typeof val === 'string') return `"${val}"`;
+  if (typeof val === 'number') return val.toString();
+  if (val instanceof Uint8Array || (typeof Buffer !== 'undefined' && val instanceof Buffer)) {
+    const hex = Array.from(val).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return hex.length > 64 ? `0x${hex.slice(0, 64)}…` : `0x${hex}`;
+  }
+  if (Array.isArray(val)) {
+    const items = val.map(formatNative);
+    const joined = items.join(', ');
+    return joined.length > 80 ? `[${joined.slice(0, 80)}…]` : `[${joined}]`;
+  }
+  if (typeof val === 'object') {
+    try {
+      const str = JSON.stringify(val, (_k, v) => typeof v === 'bigint' ? v.toString() : v);
+      return str.length > 100 ? `${str.slice(0, 100)}…` : str;
+    } catch (_) {
+      return Object.prototype.toString.call(val);
+    }
+  }
+  return String(val);
+}
+
+/**
+ * Fetch ledger entries for a contract using getLedgerEntries.
+ * @param {string} contractId
+ * @param {string} rpcUrl
+ * @returns {Promise<object>}
+ */
+async function fetchContractData(contractId, rpcUrl) {
+  const contractBytes = strKeyToBytes(contractId);
+  if (!contractBytes) throw new Error('Invalid contract ID.');
+  const instanceKeyXdr = buildContractInstanceKey(contractBytes);
+  return sorobanRpc(rpcUrl, 'getLedgerEntries', { keys: [instanceKeyXdr] });
+}
+
+/**
+ * Main handler: inspect a Soroban contract.
  */
 async function inspectContract() {
   const id = contractInput.value.trim();
   clearContractError();
   contractResults.classList.add('hidden');
 
-  if (!id) {
-    showContractError('Please enter a contract ID.');
-    return;
-  }
-
+  if (!id) { showContractError('Please enter a contract ID.'); return; }
   if (!/^C[A-Z2-7]{55}$/.test(id)) {
     showContractError('Invalid contract ID. It should start with "C" and be 56 characters long.');
     return;
@@ -602,30 +640,47 @@ async function inspectContract() {
     contractNetwork.textContent = networkLabel;
     contractEntryCount.textContent = entries.length;
 
-    // Try to show wasm hash from the instance entry
-    if (entries.length > 0) {
-      // The wasm hash is embedded in the first entry XDR — show truncated
-      const xdr = entries[0].xdr || '';
-      contractWasmHash.textContent = xdr ? truncateMiddle(xdr, 20, 20) : '(see raw XDR)';
-    } else {
-      contractWasmHash.textContent = 'No entries found';
-    }
+    // Decode entries using the SDK
+    let globalWasmHash = null;
+    const decoded = entries.map((entry, i) => {
+      const xdr = entry.xdr || '';
+      const { decoded: decodedVal, wasmHash } = decodeEntryXdr(xdr, i === 0);
+      if (wasmHash && !globalWasmHash) globalWasmHash = wasmHash;
+      return {
+        index: i + 1,
+        decodedVal,
+        lastModifiedLedger: entry.lastModifiedLedgerSeq || '—',
+        rawXdr: xdr,
+      };
+    });
+
+    contractWasmHash.textContent = globalWasmHash
+      ? `${globalWasmHash.slice(0, 32)}…`
+      : entries.length > 0 ? '(decode requires SDK — check SDK load)' : 'No entries found';
 
     // Render entries
     contractEntriesList.innerHTML = '';
-    if (entries.length === 0) {
-      contractEntriesList.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.875rem;">No ledger entries found for this contract.</p>';
+    if (decoded.length === 0) {
+      contractEntriesList.innerHTML =
+        '<p style="color:var(--color-text-muted);font-size:0.875rem;">No ledger entries found for this contract.</p>';
     } else {
-      const parsed = parseLedgerEntries(entries);
-      parsed.forEach((e) => {
+      decoded.forEach((e) => {
         const item = document.createElement('div');
         item.className = 'entry-item';
         item.innerHTML = `
           <div class="entry-header">
-            <span class="entry-key">${e.key}</span>
-            <span class="entry-ledger">Last modified: ledger #${e.lastModifiedLedger.toLocaleString ? e.lastModifiedLedger.toLocaleString() : e.lastModifiedLedger}</span>
+            <span class="entry-key">Entry ${e.index}</span>
+            <span class="entry-ledger">Last modified: ledger #${
+              typeof e.lastModifiedLedger === 'number'
+                ? e.lastModifiedLedger.toLocaleString()
+                : e.lastModifiedLedger
+            }</span>
           </div>
-          <div class="entry-xdr" title="${e.xdr}">${truncateMiddle(e.xdr, 40, 40)}</div>
+          <div class="entry-decoded">${escapeHtml(e.decodedVal)}</div>
+          <details class="entry-raw-details">
+            <summary>Raw XDR</summary>
+            <div class="entry-xdr" title="${e.rawXdr}">${truncateMiddle(e.rawXdr, 40, 40)}</div>
+          </details>
         `;
         contractEntriesList.appendChild(item);
       });
@@ -640,7 +695,19 @@ async function inspectContract() {
   }
 }
 
+/**
+ * Escape HTML special characters to prevent XSS when rendering decoded values.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 contractSearchBtn.addEventListener('click', inspectContract);
-contractInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') inspectContract();
-});
+contractInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') inspectContract(); });
