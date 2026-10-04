@@ -1,118 +1,144 @@
-# 🌟 Stellar Wallet Dashboard
+# Stellar Wallet Dashboard
 
-A clean, fast, open-source web dashboard for exploring any Stellar wallet. Enter a Stellar public key and instantly view balances, recent transactions, and account details — all powered by the live Stellar Horizon API.
+A static web dashboard for exploring Stellar wallets and Soroban smart contracts.
+Enter a Stellar public key to view balances, recent transactions, and account details
+via the Horizon API. Enter a Soroban contract ID to inspect its on-chain ledger entries
+and recent events via the Soroban RPC.
 
 [![CI](https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## ✨ Features
+---
 
-- 🔍 **Wallet Lookup** — Enter any Stellar public key to explore the account
-- 💰 **Balances** — See all assets held including XLM and custom tokens
-- 📋 **Transaction History** — Browse recent transactions with status, hash, and timestamps
-- 📄 **Account Details** — Sequence number, subentry count, home domain, and last modified ledger
-- 📱 **Responsive Design** — Works on desktop and mobile
-- 🌐 **No Backend Required** — Pure HTML, CSS, and JavaScript with no build step
-- 🔗 **Deep Links** — Each transaction links directly to the Stellar Expert explorer
-- 📋 **Copy Address** — One-click copy of the wallet address
+## Features
 
-## 🚀 Quick Start
+**Horizon wallet panel**
+- Enter any Stellar public key (G...) to look up the account
+- Balances: all assets held, XLM-first, formatted amounts
+- Recent transactions: hash, operation count, relative timestamps, success/failure badges
+- Account details: sequence number, subentry count, home domain, last modified ledger
+- Paginated "Load More" using Horizon cursor-based pagination
+- Testnet / Mainnet network selector
+- Optional Freighter wallet connect button (read-only; degrades gracefully if Freighter is not installed)
 
-No installation needed. Just open the file in your browser:
+**Soroban Contract Explorer panel**
+- Enter a contract ID (C...) and choose Testnet or Mainnet
+- Reads ledger entries via Soroban RPC `getLedgerEntries`
+- Decodes entries using `@stellar/stellar-sdk` 17.1.0 loaded from unpkg:
+  - Wasm hash and instance-storage entry count from the contract instance entry
+  - `scValToNative` conversion for other data entries
+  - Raw XDR in a collapsible `<details>` element for inspection
+- "Recent Events" view using `getEvents`, decoded with the same SDK
+- `(SDK not loaded)` fallback with truncated XDR if the CDN script fails to load
+
+> **Note:** The Soroban panel makes live RPC calls and decodes XDR client-side.
+> It has not been tested with every contract storage layout; treat it as an
+> inspection tool, not a production data source.
+
+---
+
+## Quick Start
+
+No installation needed:
 
 ```bash
 git clone https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard.git
 cd stellar-wallet-dashboard
 open index.html   # macOS
 # or: xdg-open index.html  (Linux)
-# or: start index.html      (Windows)
 ```
 
-Or serve it locally with any static server:
+Or serve locally:
 
 ```bash
-# Using Python
 python3 -m http.server 8080
-
-# Using Node.js (npx)
-npx serve .
+# then visit http://localhost:8080
 ```
 
-Then visit `http://localhost:8080` in your browser.
+---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-| Layer      | Technology                  |
-|------------|------------------------------|
-| Structure  | HTML5                        |
-| Styling    | Vanilla CSS (CSS variables)  |
-| Logic      | Vanilla JavaScript (ES2020)  |
-| Data       | [Stellar Horizon API](https://developers.stellar.org/docs/data/apis/horizon) |
-| No build   | Zero dependencies, zero config |
+| Layer     | Technology |
+|-----------|------------|
+| Structure | HTML5 |
+| Styling   | Vanilla CSS (CSS variables) |
+| Logic     | Vanilla JavaScript (ES modules, no build step) |
+| Horizon   | [Stellar Horizon REST API](https://developers.stellar.org/docs/data/apis/horizon) |
+| Soroban   | [Soroban JSON-RPC](https://developers.stellar.org/docs/data/apis/rpc) |
+| XDR decoding | `@stellar/stellar-sdk` 17.1.0 from unpkg CDN (with SRI) |
 
-## 📡 API Used
+---
 
-This project uses the **public Stellar Horizon API** — no API key required.
+## API Used
 
-- **Account info:** `GET https://horizon.stellar.org/accounts/{address}`
-- **Transactions:** `GET https://horizon.stellar.org/accounts/{address}/transactions`
+| Purpose | Endpoint |
+|---------|----------|
+| Account info | `GET https://horizon.stellar.org/accounts/{address}` |
+| Transactions | `GET https://horizon.stellar.org/accounts/{address}/transactions` |
+| Testnet account | `GET https://horizon-testnet.stellar.org/accounts/{address}` |
+| Ledger entries | `POST https://soroban-testnet.stellar.org` (`getLedgerEntries`) |
+| Contract events | `POST https://soroban-testnet.stellar.org` (`getEvents`) |
+| Mainnet RPC | `POST https://soroban-mainnet.stellar.org` |
 
-Full API documentation: [developers.stellar.org](https://developers.stellar.org/docs/data/apis/horizon)
+---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 stellar-wallet-dashboard/
 ├── index.html              # Main HTML page
 ├── styles.css              # All CSS styles
-├── app.js                  # JavaScript logic (Horizon API calls, rendering)
-├── README.md               # This file
-├── CHANGELOG.md            # Project changelog
-├── SECURITY.md             # Security policy and data architecture
-├── CONTRIBUTING.md         # How to contribute
-├── package.json            # Project metadata and dev dependencies
-├── package-lock.json       # Locked dependency tree
-├── .eslintrc.json          # ESLint configuration
-├── .htmlvalidate.json      # HTML validation configuration
+├── app.js                  # Orchestrator: wires DOM events to src/ modules
+├── src/
+│   ├── utils.js            # Pure utility functions (no DOM/network)
+│   ├── api.js              # Horizon and Soroban RPC fetch functions
+│   ├── render.js           # DOM render functions
+│   └── soroban.js          # XDR decoding helpers (SDK-dependent)
+├── tests/
+│   └── utils.test.js       # node:test unit tests for src/utils.js
+├── README.md
+├── CHANGELOG.md
+├── SECURITY.md
+├── CONTRIBUTING.md
+├── package.json
+├── .eslintrc.json
+├── .htmlvalidate.json
 └── .github/
-    ├── workflows/
-    │   └── ci.yml          # CI: ESLint + HTML validation on every push/PR
-    └── ISSUE_TEMPLATE/
-        ├── bug_report.md
-        └── feature_request.md
+    └── workflows/
+        ├── ci.yml          # ESLint + html-validate + unit tests
+        └── pages.yml       # Deploy to GitHub Pages on push to main
 ```
-
-## 🤝 Contributing
-
-Contributions are welcome! Whether it's a bug fix, a new feature, improved documentation, or better styling — all PRs are appreciated.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
-## 📋 Roadmap
-
-- [ ] Add support for Stellar Testnet
-- [ ] Show operation details inside each transaction
-- [ ] Add XLM price in USD (via CoinGecko API)
-- [ ] Dark/Light theme toggle
-- [ ] Export transaction history as CSV
-- [ ] Add search history (localStorage)
-- [ ] Support for Stellar Federation addresses (e.g., `user*stellar.org`)
-- [ ] Accessibility audit and ARIA improvements
-
-## 🐛 Known Issues / Limitations
-
-- Horizon public API retains only ~1 year of historical data
-- Very new accounts (unfunded) will return a "not found" error
-- Rate limiting may apply for frequent lookups
-
-## 🔒 Security
-
-This is a pure read-only dashboard. It never requests, accepts, or stores private keys or seed phrases. See [SECURITY.md](SECURITY.md) for the full data architecture statement.
-
-## 📜 License
-
-MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-Built with ❤️ for the Stellar ecosystem. Not affiliated with the Stellar Development Foundation.
+## Development
+
+```bash
+# Install dev tools
+npm ci
+
+# Run unit tests
+npm test
+
+# Lint
+npm run lint
+
+# Validate HTML
+npx html-validate index.html
+```
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Security
+
+This is a read-only dashboard. It never requests or stores private keys.
+See [SECURITY.md](SECURITY.md).
+
+## License
+
+MIT

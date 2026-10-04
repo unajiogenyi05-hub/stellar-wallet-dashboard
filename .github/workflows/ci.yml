@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  lint:
-    name: Lint & Validate
+  lint-validate-test:
+    name: Lint, Validate & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,13 +16,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run ESLint
-        run: npx eslint app.js
+        run: npm run lint
 
       - name: Validate HTML
         run: npx html-validate index.html
+
+      - name: Run unit tests
+        run: npm test

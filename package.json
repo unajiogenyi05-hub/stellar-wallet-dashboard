@@ -6,7 +6,8 @@
   "scripts": {
     "start": "npx serve .",
     "dev": "npx serve . --listen 8080",
-    "lint": "npx eslint app.js"
+    "lint": "npx eslint app.js src/",
+    "test": "node --test tests/utils.test.js"
   },
   "keywords": [
     "stellar",
