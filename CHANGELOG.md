@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.github/workflows/ci.yml`: added `npm test` step and updated ESLint to lint the module files.
 - `SECURITY.md`: rewritten to be specific to this repository.
 - `CONTRIBUTING.md`: rewritten to be specific to this repository.
-- README.md: updated to describe the Soroban panel and the CDN-loaded SDK.
+- README.md: updated to describe the Soroban panel and the CDN-loaded SDK; added live GitHub Pages URL.
 
 ### Fixed
 - Error and rate-limit handling for Horizon and Soroban RPC: user-visible messages for timeout, HTTP 429 (with retry-after or back-off), network failure, invalid account, and invalid contract ID; no silent failures.

@@ -8,6 +8,8 @@ and recent events via the Soroban RPC.
 [![CI](https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/unajiogenyi05-hub/stellar-wallet-dashboard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**Live:** https://unajiogenyi05-hub.github.io/stellar-wallet-dashboard/
+
 ---
 
 ## Features
