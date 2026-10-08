@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- 2026-10-08 — fix CI Node version -->
+
+### Fixed
+- `.github/workflows/ci.yml`: bump Node.js from 20 to 22; `html-validate@11.12.0` requires `^22.22.0 || >= 24.8.0` and uses `fs.globSync` which is unavailable in Node 20, causing `TypeError: fs.globSync is not a function` in the Validate HTML step.
+- `package.json`: updated `engines.node` from `>=18.0.0` to `>=22.0.0` to match the actual minimum required by devDependencies.
+
 <!-- 2026-10-08 -->
 
 <!-- Tasks 4a / 4b / 4c -->
