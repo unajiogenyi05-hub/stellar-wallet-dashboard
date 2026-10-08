@@ -26,6 +26,7 @@ import {
 
 import {
   decodeXdrEntry,
+  decodeEvent,
 } from './src/soroban.js';
 
 import {
@@ -127,7 +128,10 @@ const contractNetwork    = document.getElementById('contractNetwork');
 const contractEntryCount = document.getElementById('contractEntryCount');
 const contractWasmHash   = document.getElementById('contractWasmHash');
 const contractEntriesList = document.getElementById('contractEntriesList');
+const contractEventsList  = document.getElementById('contractEventsList');
+const contractEventsCount = document.getElementById('contractEventsCount');
 const useTestnetToggle   = document.getElementById('useTestnet');
+const horizonTestnetToggle = document.getElementById('horizonTestnet');
 
 // ─── Error / Loading helpers ──────────────────────────────────────────────────
 
@@ -191,7 +195,7 @@ async function lookupWallet(address) {
 
     const txs = txPage._embedded?.records ?? [];
     setTxCount(txs.length);
-    renderTransactions(txs);
+    renderTransactions(txs, false, horizonUrl === HORIZON_TESTNET ? 'testnet' : 'mainnet');
 
     const nextHref = txPage._links?.next?.href;
     if (nextHref && txs.length === TX_PAGE_SIZE) {
@@ -217,7 +221,7 @@ async function loadMoreTransactions() {
   try {
     const txPage = await fetchTransactions(currentAddress, horizonUrl, nextTxPageUrl);
     const txs = txPage._embedded?.records ?? [];
-    renderTransactions(txs, true);
+    renderTransactions(txs, true, horizonUrl === HORIZON_TESTNET ? 'testnet' : 'mainnet');
 
     const nextHref = txPage._links?.next?.href;
     if (nextHref && txs.length === TX_PAGE_SIZE) {
@@ -336,11 +340,106 @@ async function inspectContract() {
     }
 
     contractResults.classList.remove('hidden');
+
+    // 4b: Fetch and render recent events
+    fetchContractEvents(id, rpcUrl, isTestnet);
   } catch (err) {
     showContractError(err.message || 'Failed to fetch contract data.');
   } finally {
     contractSearchBtn.disabled = false;
     contractSearchBtn.querySelector('.btn-text').textContent = 'Inspect';
+  }
+}
+
+// ─── Contract Events (4b) ─────────────────────────────────────────────────────
+
+/**
+ * Fetch recent contract events and render them in the events panel.
+ * Runs after ledger entries are shown; errors are non-fatal.
+ * @param {string} contractId
+ * @param {string} rpcUrl
+ * @param {boolean} isTestnet
+ */
+async function fetchContractEvents(contractId, rpcUrl, isTestnet) {
+  contractEventsCount.textContent = '';
+  contractEventsList.innerHTML = '';
+
+  const explorerBase = isTestnet
+    ? 'https://stellar.expert/explorer/testnet'
+    : 'https://stellar.expert/explorer/public';
+
+  try {
+    const result = await sorobanRpc(rpcUrl, 'getEvents', {
+      filters: [{ type: 'contract', contractIds: [contractId] }],
+      pagination: { limit: 10 },
+    });
+
+    const events = (result && result.events) || [];
+    contractEventsCount.textContent = `${events.length} shown`;
+
+    if (events.length === 0) {
+      const p = document.createElement('p');
+      p.style.cssText = 'color:var(--color-text-muted);font-size:0.875rem;';
+      p.textContent = 'No recent events found for this contract.';
+      contractEventsList.appendChild(p);
+      return;
+    }
+
+    events.forEach((ev) => {
+      const { topic, value, type } = decodeEvent(ev);
+
+      const item = document.createElement('div');
+      item.className = 'event-item';
+
+      const meta = document.createElement('div');
+      meta.className = 'event-meta';
+
+      const typeSpan = document.createElement('span');
+      typeSpan.className = 'tx-tag';
+      typeSpan.textContent = type;
+
+      if (ev.ledger) {
+        const explorerLink = document.createElement('a');
+        explorerLink.href = `${explorerBase}/ledger/${encodeURIComponent(ev.ledger)}`;
+        explorerLink.target = '_blank';
+        explorerLink.rel = 'noopener';
+        explorerLink.textContent = `ledger ${ev.ledger}`;
+        meta.appendChild(typeSpan);
+        meta.appendChild(explorerLink);
+      } else {
+        meta.appendChild(typeSpan);
+      }
+      item.appendChild(meta);
+
+      const topicDiv = document.createElement('div');
+      topicDiv.className = 'event-topic';
+      const topicLabel = document.createElement('strong');
+      topicLabel.textContent = 'Topic: ';
+      const topicText = document.createElement('span');
+      topicText.innerHTML = topic; // already escaped by decodeEvent
+      topicDiv.appendChild(topicLabel);
+      topicDiv.appendChild(topicText);
+      item.appendChild(topicDiv);
+
+      if (value) {
+        const valueDiv = document.createElement('div');
+        valueDiv.className = 'event-value';
+        const valueLabel = document.createElement('strong');
+        valueLabel.textContent = 'Value: ';
+        const valueText = document.createElement('span');
+        valueText.innerHTML = value; // already escaped by decodeEvent
+        valueDiv.appendChild(valueLabel);
+        valueDiv.appendChild(valueText);
+        item.appendChild(valueDiv);
+      }
+
+      contractEventsList.appendChild(item);
+    });
+  } catch (_) {
+    const p = document.createElement('p');
+    p.style.cssText = 'color:var(--color-text-muted);font-size:0.875rem;';
+    p.textContent = 'Could not load events for this contract.';
+    contractEventsList.appendChild(p);
   }
 }
 
@@ -376,4 +475,9 @@ document.querySelectorAll('.example-btn').forEach((btn) => {
 contractSearchBtn.addEventListener('click', inspectContract);
 contractInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') inspectContract();
+});
+
+// 4a: Horizon network selector
+horizonTestnetToggle.addEventListener('change', () => {
+  horizonUrl = horizonTestnetToggle.checked ? HORIZON_TESTNET : HORIZON_MAINNET;
 });
