@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- 2026-10-08 -->
 
+### Added
+- `tests/render.test.js`: 4 jsdom-based tests verifying that `escapeHtml` prevents XSS — a malicious `asset_code` value (`<img src=x onerror=...>`) produces no `<img>` or `<script>` DOM nodes after rendering.
+
+### Changed
+- `app.js`: converted to an ES module (`import`/`export`); imports utility, API, render, and Soroban functions from `src/`; deleted ~330 lines of duplicated implementations.
+- `index.html`: `<script src="app.js">` → `<script type="module" src="app.js">`.
+- `src/soroban.js` `decodeXdrEntry`: updated XDR access patterns for `@stellar/stellar-sdk` v17 (`ledgerData.type`, `ledgerData.contractData.val`, `instance.executable.type`) instead of the old `.switch().name` / `.val()` method-call style.
+- `package.json`: added `jsdom@25.0.1` devDependency; `npm test` now runs all three test files (36 tests).
+
+### Fixed
+- `app.js` `renderBalances`: the old monolith used bare `innerHTML` with unescaped `asset_code`/`asset_issuer`; the refactored version delegates to `src/render.js` which escapes all fields through `escapeHtml`.
+
+<!-- 2026-10-08 (Task 2) -->
+
 ### Fixed
 - `.eslintrc.json`: added `overrides` so `src/**/*.js` and `app.js` are parsed as ES modules (`sourceType: "module"`) and `tests/**/*.js` as CommonJS scripts (`env.node: true`, `sourceType: "script"`); eliminates four parse errors that failed CI.
 - `package.json`: `lint` script now includes `tests/` so test files are also linted.

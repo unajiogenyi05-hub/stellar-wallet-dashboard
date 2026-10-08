@@ -7,7 +7,7 @@
     "start": "npx serve .",
     "dev": "npx serve . --listen 8080",
     "lint": "npx eslint app.js src/ tests/",
-    "test": "node --test tests/utils.test.js tests/soroban.test.js"
+    "test": "node --test tests/utils.test.js tests/soroban.test.js tests/render.test.js"
   },
   "keywords": [
     "stellar",
@@ -33,6 +33,7 @@
     "@stellar/stellar-sdk": "17.1.0",
     "eslint": "8.57.0",
     "html-validate": "11.12.0",
+    "jsdom": "25.0.1",
     "serve": "14.2.3"
   },
   "engines": {

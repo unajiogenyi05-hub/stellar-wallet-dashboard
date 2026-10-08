@@ -3,20 +3,28 @@
  *
  * Uses @stellar/stellar-sdk loaded as window.StellarSdk from the CDN.
  * All functions degrade gracefully if the SDK is not available.
+ *
+ * SDK v17 XDR objects use property access (not method calls):
+ *   ledgerData.type         → 'contractData' | 'contractCode'
+ *   ledgerData.contractData → LedgerKeyContractData object
+ *   contractData.val        → ScVal object
+ *   scVal.type              → ScValType string
+ *   scVal.instance          → ScContractInstance (when type='contractInstance')
+ *   instance.executable     → ScContractExecutable
+ *   executable.type         → 'contractExecutableWasm' | 'contractExecutableStellarAsset'
+ *   executable.wasmHash     → Uint8Array (when type='contractExecutableWasm')
  */
-
-'use strict';
 
 import { escapeHtml, formatNative, truncateMiddle } from './utils.js';
 
 /**
- * Returns a human-readable label for an XDR ScVal switch type.
+ * Returns a human-readable label for an XDR ScVal type.
  * @param {object} scVal
  * @returns {string}
  */
 export function xdrValTypeLabel(scVal) {
   try {
-    const name = scVal && scVal.switch && scVal.switch().name;
+    const name = scVal && scVal.type;
     return name ? `<${name}>` : '<unknown ScVal type>';
   } catch (_) {
     return '<unknown ScVal type>';
@@ -24,11 +32,11 @@ export function xdrValTypeLabel(scVal) {
 }
 
 /**
- * Decode a base64 XDR value using the CDN-loaded StellarSdk.
+ * Decode a base64 XDR LedgerEntryData returned by getLedgerEntries.
  *
  * Returns an object with:
  *  - `decoded` {string} — human-readable representation
- *  - `wasmHash` {string|null} — 64-char hex wasm hash (instance entries only)
+ *  - `wasmHash` {string|null} — 64-char hex wasm hash (wasm instance entries only)
  *
  * Falls back to a truncated raw XDR string if the SDK is not available.
  *
@@ -49,39 +57,45 @@ export function decodeXdrEntry(xdrBase64, entryType) {
 
   try {
     const ledgerData = sdk.xdr.LedgerEntryData.fromXDR(xdrBase64, 'base64');
-    const arm = ledgerData.switch().name;
+
+    // SDK v17: ledgerData.type is a string ('contractData', 'contractCode', etc.)
+    const arm = ledgerData.type;
 
     if (arm === 'contractData') {
-      const val = ledgerData.contractData().val();
+      const contractData = ledgerData.contractData;
+      const val = contractData.val;
 
       if (entryType === 'instance') {
-        // Instance entry: val is ScContractInstance
-        const instance = ledgerData.contractData().val().instance
-          ? ledgerData.contractData().val().instance()
-          : null;
+        // Instance entry: val.type === 'contractInstance'
+        // val.instance is ScContractInstance
+        try {
+          const instance = val.instance;
+          if (instance) {
+            const exec = instance.executable;
+            if (exec && exec.type === 'contractExecutableWasm' && exec.wasmHash) {
+              wasmHash = Array.from(exec.wasmHash)
+                .map((b) => b.toString(16).padStart(2, '0'))
+                .join('');
+            }
 
-        if (instance) {
-          const hashBytes = instance.executable &&
-                            instance.executable().wasmHash &&
-                            instance.executable().wasmHash();
-          if (hashBytes) {
-            wasmHash = Array.from(hashBytes)
-              .map((b) => b.toString(16).padStart(2, '0'))
-              .join('');
+            const storage = instance.storage;
+            const storageEntries = storage ? storage.length : 0;
+
+            const execLabel = exec && exec.type === 'contractExecutableStellarAsset'
+              ? 'stellar_asset (no wasm)'
+              : wasmHash
+                ? `wasm: ${wasmHash.slice(0, 16)}\u2026`
+                : '(wasm hash unavailable)';
+
+            const decoded = `instance (${execLabel}, ${storageEntries} storage entries)`;
+            return { decoded, wasmHash };
           }
-
-          const storageEntries = instance.storage
-            ? (instance.storage() ? instance.storage().length : 0)
-            : 0;
-
-          const decoded = wasmHash
-            ? `instance (wasm: ${wasmHash.slice(0, 16)}\u2026, ${storageEntries} instance-storage entries)`
-            : `instance (${storageEntries} instance-storage entries)`;
-
-          return { decoded, wasmHash };
+        } catch (_) {
+          // fall through to scValToNative
         }
       }
 
+      // Non-instance or fallback: try scValToNative
       try {
         const native = sdk.scValToNative(val);
         return { decoded: formatNative(native), wasmHash };
@@ -126,7 +140,7 @@ export function decodeEvent(event) {
     const topicRaw = Array.isArray(event.topic)
       ? event.topic.map((t) => truncateMiddle(t, 12, 12)).join(', ')
       : String(event.topic || '');
-    const valueRaw = truncateMiddle(event.value && event.value.xdr || '', 20, 20);
+    const valueRaw = truncateMiddle((event.value && event.value.xdr) || '', 20, 20);
     return {
       contractId,
       type,
