@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `.eslintrc.json`: added `overrides` so `src/**/*.js` and `app.js` are parsed as ES modules (`sourceType: "module"`) and `tests/**/*.js` as CommonJS scripts (`env.node: true`, `sourceType: "script"`); eliminates four parse errors that failed CI.
 - `package.json`: `lint` script now includes `tests/` so test files are also linted.
+- `app.js` `strKeyToBytes`: version byte check was `0x02`; corrected to `0x10` (the Stellar strkey version byte for contract addresses, `2 << 3`). Added CRC16-XModem (poly=0x1021, little-endian) checksum validation so corrupt or wrong-prefix keys are rejected instead of silently decoded.
+- `app.js` `buildContractInstanceKey`: ScVal discriminant at offset 40 was `11` (`scvU256`); corrected to `20` (`scvLedgerKeyContractInstance`). Verified against `@stellar/stellar-sdk` v17.1.0 `xdr.LedgerKey.contractData(...)` output.
+- `package.json`: added `@stellar/stellar-sdk@17.1.0` as a dev-only dependency for the new Soroban unit tests.
+
+### Added
+- `tests/soroban.test.js`: 9 unit tests covering `strKeyToBytes` (valid decode, wrong prefix, wrong length, bad checksum, invalid base32 character) and `buildContractInstanceKey` (output matches SDK XDR, discriminant values, durability).
 
 <!-- 2026-10-04 -->
 

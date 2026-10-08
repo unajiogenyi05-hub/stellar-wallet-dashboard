@@ -438,7 +438,24 @@ async function sorobanRpc(rpcUrl, method, params) {
 }
 
 /**
+ * CRC16-XModem checksum used by Stellar strkeys (poly=0x1021, init=0).
+ * @param {number[]} bytes
+ * @returns {number} 16-bit CRC
+ */
+function crc16xmodem(bytes) {
+  let crc = 0;
+  for (const byte of bytes) {
+    crc ^= (byte << 8);
+    for (let i = 0; i < 8; i++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
+  }
+  return crc;
+}
+
+/**
  * Decode a Stellar Strkey (C... contract address) to 32 raw bytes.
+ * Validates version byte (0x10), length, and CRC16-XModem checksum.
  * Returns null if invalid.
  * @param {string} strkey
  * @returns {Uint8Array|null}
@@ -456,7 +473,14 @@ function strKeyToBytes(strkey) {
     bits += 5;
     if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 0xff); bits -= 8; }
   }
-  if (bytes.length < 34 || bytes[0] !== 0x02) return null;
+  // Contract strkey: 1 version byte (0x10) + 32 data bytes + 2 CRC bytes = 35 bytes
+  if (bytes.length !== 35) return null;
+  // Version byte for contract (C...) is 0x10 (= 2 << 3, type 2)
+  if (bytes[0] !== 0x10) return null;
+  // Verify CRC16-XModem over version + data bytes; stored little-endian
+  const storedCrc = bytes[33] | (bytes[34] << 8);
+  const computedCrc = crc16xmodem(bytes.slice(0, 33));
+  if (storedCrc !== computedCrc) return null;
   return new Uint8Array(bytes.slice(1, 33));
 }
 
@@ -466,7 +490,7 @@ function strKeyToBytes(strkey) {
  *   [0-3]  LedgerKey discriminant: CONTRACT_DATA = 6
  *   [4-7]  ScAddress discriminant: CONTRACT = 1
  *   [8-39] 32-byte contract hash
- *   [40-43] ScVal discriminant: SCV_LEDGER_KEY_CONTRACT_INSTANCE = 11
+ *   [40-43] ScVal discriminant: SCV_LEDGER_KEY_CONTRACT_INSTANCE = 20
  *   [44-47] ContractDataDurability: PERSISTENT = 1
  * @param {Uint8Array} contractHash
  * @returns {string} base64
@@ -477,7 +501,7 @@ function buildContractInstanceKey(contractHash) {
   view.setUint32(0, 6);   // CONTRACT_DATA
   view.setUint32(4, 1);   // ScAddress::Contract
   buf.set(contractHash, 8);
-  view.setUint32(40, 11); // SCV_LEDGER_KEY_CONTRACT_INSTANCE
+  view.setUint32(40, 20); // SCV_LEDGER_KEY_CONTRACT_INSTANCE (scvLedgerKeyContractInstance = 20)
   view.setUint32(44, 1);  // PERSISTENT
   return btoa(String.fromCharCode(...buf));
 }
