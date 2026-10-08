@@ -10,5 +10,22 @@
   "rules": {
     "no-unused-vars": ["warn"],
     "no-console": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/**/*.js", "app.js"],
+      "parserOptions": {
+        "sourceType": "module"
+      }
+    },
+    {
+      "files": ["tests/**/*.js"],
+      "env": {
+        "node": true
+      },
+      "parserOptions": {
+        "sourceType": "script"
+      }
+    }
+  ]
 }

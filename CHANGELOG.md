@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- 2026-10-08 -->
+
+### Fixed
+- `.eslintrc.json`: added `overrides` so `src/**/*.js` and `app.js` are parsed as ES modules (`sourceType: "module"`) and `tests/**/*.js` as CommonJS scripts (`env.node: true`, `sourceType: "script"`); eliminates four parse errors that failed CI.
+- `package.json`: `lint` script now includes `tests/` so test files are also linted.
+
 <!-- 2026-10-04 -->
 
 ### Added
