@@ -16,17 +16,50 @@ The Stellar Wallet Dashboard is a **pure read-only browser application**. The fo
 |----------|--------|
 | **Private keys** | Never requested, never accepted, never processed |
 | **Seed phrases** | Never requested, never accepted, never processed |
-| **Backend server** | None — all requests go directly from the browser to the public Stellar Horizon API |
+| **Backend server** | None — all requests go directly from the browser to external APIs (see below) |
 | **Data storage** | None — no `localStorage`, no `sessionStorage`, no cookies, no IndexedDB |
-| **Data transmitted** | Only Stellar **public keys** (already publicly visible on-chain) |
+| **Data transmitted** | Only Stellar **public keys** and **contract IDs** (already publicly visible on-chain) |
 | **Third-party tracking** | None |
 
-The only data flow is:
+### Third-party network requests
+
+The app makes outbound requests to three external origins:
+
+| Origin | Purpose |
+|--------|---------|
+| `https://horizon.stellar.org` / `https://horizon-testnet.stellar.org` | Horizon REST API — account info and transactions |
+| `https://soroban-testnet.stellar.org` / `https://soroban-mainnet.stellar.org` | Soroban JSON-RPC — contract ledger entries and events |
+| `https://unpkg.com` | CDN delivery of `@stellar/stellar-sdk@17.1.0` browser bundle for XDR decoding |
+
+The unpkg script tag includes a `sha384` SRI integrity hash and `crossorigin="anonymous"` so the browser verifies the bundle before executing it.
+
+### Content Security Policy
+
+`index.html` sets a `Content-Security-Policy` meta tag:
+
 ```
-User enters public key → Browser fetches Horizon API → Data rendered to DOM → Nothing stored
+default-src 'self';
+script-src  'self' https://unpkg.com;
+connect-src https://horizon.stellar.org
+            https://horizon-testnet.stellar.org
+            https://soroban-testnet.stellar.org
+            https://soroban-mainnet.stellar.org;
+style-src   'self' 'unsafe-inline'
 ```
 
-All data displayed is already publicly available on the Stellar blockchain. There is no private information in this application.
+`'unsafe-inline'` is required for the inline `style=` attributes used in a few dynamically-created DOM nodes. Removing it would require converting those to CSS classes.
+
+The complete data flow is:
+
+```
+User enters public key / contract ID
+  → Browser fetches Horizon API (account) or Soroban RPC (contract)
+  → SDK bundle (loaded once from unpkg, SRI-verified) decodes XDR
+  → Data rendered to DOM via textContent / escapeHtml
+  → Nothing stored
+```
+
+All data displayed is already publicly available on the Stellar blockchain.
 
 ---
 
@@ -53,18 +86,19 @@ Use GitHub's built-in private vulnerability reporting:
 
 ### In scope
 
-- **XSS via Horizon API response data** — any field from the Horizon API rendered via `innerHTML` instead of `textContent` could allow injected script execution if a malicious actor controls account data on-chain
+- **XSS via API response data** — fields from Horizon or Soroban RPC rendered via unescaped `innerHTML` could allow injected script execution if a malicious actor controls account or contract data on-chain; all rendered strings pass through `escapeHtml` or `textContent`
 - **Open redirect** — external links constructed from API data (e.g., transaction explorer URLs) that could redirect to malicious sites
 - **Prototype pollution** — malicious API responses that modify `Object.prototype` via unsafe JSON handling
-- **Content Security Policy gaps** — missing or misconfigured CSP headers that weaken XSS defenses
-- **Dependency vulnerabilities** — known CVEs in `serve` or `eslint` dev dependencies
+- **Content Security Policy gaps** — the CSP meta tag restricts origins; a bypass would be in scope
+- **SRI bypass** — a compromise of the unpkg CDN serving a different SDK bundle is in scope
+- **Dependency vulnerabilities** — known CVEs in `serve`, `eslint`, `html-validate`, `jsdom`, or `@stellar/stellar-sdk` dev dependencies
 
 ### Out of scope
 
 - Public key enumeration — Stellar public keys are publicly visible on-chain by design
-- Rate limiting by Horizon — this is controlled by the Stellar Development Foundation, not this project
+- Rate limiting by Horizon or Soroban RPC — this is controlled by the Stellar Development Foundation, not this project
 - Issues requiring the user to be tricked into entering a private key — the app never prompts for one
-- Bugs in the Stellar Horizon API itself — report to [Stellar security](https://stellar.org/security)
+- Bugs in the Stellar Horizon API or Soroban RPC themselves — report to [Stellar security](https://stellar.org/security)
 
 ---
 

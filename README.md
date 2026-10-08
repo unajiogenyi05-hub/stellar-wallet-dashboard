@@ -20,8 +20,8 @@ and recent events via the Soroban RPC.
 - Recent transactions: hash, operation count, relative timestamps, success/failure badges
 - Account details: sequence number, subentry count, home domain, last modified ledger
 - Paginated "Load More" using Horizon cursor-based pagination
-- Testnet / Mainnet network selector
-- Optional Freighter wallet connect button (read-only; degrades gracefully if Freighter is not installed)
+- Testnet / Mainnet network selector; transaction deep-links use the matching stellar.expert network
+- Error messages for timeout, HTTP 429 (with Retry-After), network failure, 404, and invalid input
 
 **Soroban Contract Explorer panel**
 - Enter a contract ID (C...) and choose Testnet or Mainnet
@@ -30,12 +30,12 @@ and recent events via the Soroban RPC.
   - Wasm hash and instance-storage entry count from the contract instance entry
   - `scValToNative` conversion for other data entries
   - Raw XDR in a collapsible `<details>` element for inspection
-- "Recent Events" view using `getEvents`, decoded with the same SDK
+- Recent Events view using `getEvents`, decoded with the same SDK
 - `(SDK not loaded)` fallback with truncated XDR if the CDN script fails to load
 
 > **Note:** The Soroban panel makes live RPC calls and decodes XDR client-side.
 > It has not been tested with every contract storage layout; treat it as an
-> inspection tool, not a production data source.
+> inspection tool, not a source of truth.
 
 ---
 
@@ -50,7 +50,7 @@ open index.html   # macOS
 # or: xdg-open index.html  (Linux)
 ```
 
-Or serve locally:
+Or serve locally (required for ES module imports):
 
 ```bash
 python3 -m http.server 8080
@@ -61,14 +61,14 @@ python3 -m http.server 8080
 
 ## Tech Stack
 
-| Layer     | Technology |
-|-----------|------------|
-| Structure | HTML5 |
-| Styling   | Vanilla CSS (CSS variables) |
-| Logic     | Vanilla JavaScript (ES modules, no build step) |
-| Horizon   | [Stellar Horizon REST API](https://developers.stellar.org/docs/data/apis/horizon) |
-| Soroban   | [Soroban JSON-RPC](https://developers.stellar.org/docs/data/apis/rpc) |
-| XDR decoding | `@stellar/stellar-sdk` 17.1.0 from unpkg CDN (with SRI) |
+| Layer        | Technology |
+|--------------|------------|
+| Structure    | HTML5 |
+| Styling      | Vanilla CSS (CSS variables) |
+| Logic        | Vanilla JavaScript (ES modules, no build step) |
+| Horizon      | [Stellar Horizon REST API](https://developers.stellar.org/docs/data/apis/horizon) |
+| Soroban      | [Soroban JSON-RPC](https://developers.stellar.org/docs/data/apis/rpc) |
+| XDR decoding | `@stellar/stellar-sdk` 17.1.0 from unpkg CDN (SRI hash on script tag) |
 
 ---
 
@@ -89,7 +89,7 @@ python3 -m http.server 8080
 
 ```
 stellar-wallet-dashboard/
-├── index.html              # Main HTML page
+├── index.html              # Main HTML page (CSP meta tag, type="module" script)
 ├── styles.css              # All CSS styles
 ├── app.js                  # Orchestrator: wires DOM events to src/ modules
 ├── src/
@@ -98,7 +98,9 @@ stellar-wallet-dashboard/
 │   ├── render.js           # DOM render functions
 │   └── soroban.js          # XDR decoding helpers (SDK-dependent)
 ├── tests/
-│   └── utils.test.js       # node:test unit tests for src/utils.js
+│   ├── utils.test.js       # node:test unit tests for src/utils.js (23 tests)
+│   ├── soroban.test.js     # node:test unit tests for strkey/XDR helpers (9 tests)
+│   └── render.test.js      # jsdom XSS tests for renderBalances/escapeHtml (4 tests)
 ├── README.md
 ├── CHANGELOG.md
 ├── SECURITY.md
@@ -108,7 +110,7 @@ stellar-wallet-dashboard/
 ├── .htmlvalidate.json
 └── .github/
     └── workflows/
-        ├── ci.yml          # ESLint + html-validate + unit tests
+        ├── ci.yml          # ESLint + html-validate + unit tests (36 tests)
         └── pages.yml       # Deploy to GitHub Pages on push to main
 ```
 
@@ -120,7 +122,7 @@ stellar-wallet-dashboard/
 # Install dev tools
 npm ci
 
-# Run unit tests
+# Run unit tests (36 tests across 3 files)
 npm test
 
 # Lint

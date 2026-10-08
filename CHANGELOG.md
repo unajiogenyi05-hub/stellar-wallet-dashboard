@@ -7,82 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-<!-- 2026-10-08 -->
+<!-- 2026-10-08 — Task 5: docs -->
 
-<!-- Tasks 4a / 4b / 4c -->
+### Added
+- `index.html`: `Content-Security-Policy` meta tag (`default-src 'self'`; `script-src 'self' https://unpkg.com`; `connect-src` the four API hosts; `style-src 'self' 'unsafe-inline'`).
+
+### Changed
+- `README.md`: updated project structure to list all three test files with correct counts (36 total); removed Freighter claim; description matches actual code.
+- `SECURITY.md`: added Soroban RPC and unpkg CDN as third-party request origins; updated data-flow description; added CSP section; expanded in-scope items to cover SRI bypass and Soroban RPC data.
+
+<!-- 2026-10-08 — Tasks 4a / 4b / 4c -->
 
 ### Added
 - **Network selector for Horizon** (4a): "Use Testnet" checkbox in the wallet search section wires `horizonUrl` to `HORIZON_TESTNET`; transaction explorer deep-links use `/explorer/testnet/` for testnet, `/explorer/public/` for mainnet.
 - **Recent Events panel** (4b): after a successful contract inspect, fetches up to 10 events via Soroban RPC `getEvents` (`filters: [{ type: "contract", contractIds: [id] }]`); topics and values decoded with `decodeEvent` from `src/soroban.js`; non-fatal on error.
-- **Accessibility** (4c): visually-hidden `<label>` elements for `#addressInput` and `#contractInput` (`.sr-only` class); `role="alert"` + `aria-live="assertive"` on both error paragraphs; `aria-live="polite"` on `#resultsSection` and `#contractResults`; visible focus rings via `:focus-visible`; `.sr-only`, `.network-selector`, and event-item styles added to `styles.css`.
+- **Accessibility** (4c): visually-hidden `<label>` elements for `#addressInput` and `#contractInput` (`.sr-only` class); `role="alert"` + `aria-live="assertive"` on both error paragraphs; `aria-live="polite"` on `#resultsSection` and `#contractResults`; visible focus rings via `:focus-visible`.
+- `styles.css`: `.sr-only`, `.network-selector`, and event-item CSS classes.
 
 ### Changed
 - `src/render.js` `renderTransactions`: added `network` parameter (`'mainnet'`|`'testnet'`) to set the correct stellar.expert explorer base URL.
 
-<!-- Task 3 -->
+<!-- 2026-10-08 — Task 3 -->
 
 ### Added
 - `tests/render.test.js`: 4 jsdom-based tests verifying that `escapeHtml` prevents XSS — a malicious `asset_code` value (`<img src=x onerror=...>`) produces no `<img>` or `<script>` DOM nodes after rendering.
 
 ### Changed
-- `app.js`: converted to an ES module (`import`/`export`); imports utility, API, render, and Soroban functions from `src/`; deleted ~330 lines of duplicated implementations.
+- `app.js`: converted to an ES module (`import`/`export`); imports utility, API, render, and Soroban helpers from `src/`; deleted ~330 lines of duplicated implementations.
 - `index.html`: `<script src="app.js">` → `<script type="module" src="app.js">`.
-- `src/soroban.js` `decodeXdrEntry`: updated XDR access patterns for `@stellar/stellar-sdk` v17 (`ledgerData.type`, `ledgerData.contractData.val`, `instance.executable.type`) instead of the old `.switch().name` / `.val()` method-call style.
+- `src/soroban.js` `decodeXdrEntry`: updated XDR access patterns for `@stellar/stellar-sdk` v17 (property-style access: `ledgerData.type`, `contractData.val`, `instance.executable.type`) instead of the old `.switch().name` / method-call style.
 - `package.json`: added `jsdom@25.0.1` devDependency; `npm test` now runs all three test files (36 tests).
 
 ### Fixed
-- `app.js` `renderBalances`: the old monolith used bare `innerHTML` with unescaped `asset_code`/`asset_issuer`; the refactored version delegates to `src/render.js` which escapes all fields through `escapeHtml`.
+- `app.js` `renderBalances` (old monolith): used bare `innerHTML` with unescaped `asset_code`/`asset_issuer`; the refactored version delegates to `src/render.js` which escapes all fields through `escapeHtml`.
 
-<!-- 2026-10-08 (Task 2) -->
+<!-- 2026-10-08 — Task 2 -->
+
+### Added
+- `tests/soroban.test.js`: 9 unit tests covering `strKeyToBytes` (valid decode, wrong prefix, wrong length, bad checksum, invalid base32 character) and `buildContractInstanceKey` (output matches SDK XDR, discriminant values, durability).
+- `@stellar/stellar-sdk@17.1.0` added as a devDependency for the Soroban unit tests.
+
+### Fixed
+- `app.js` `strKeyToBytes`: version byte check was `0x02`; corrected to `0x10` (the Stellar strkey version byte for contract addresses, `2 << 3`). Added CRC16-XModem (poly=0x1021, little-endian) checksum validation so corrupt or wrong-prefix keys are rejected instead of silently decoded.
+- `app.js` `buildContractInstanceKey`: ScVal discriminant at offset 40 was `11` (`scvU256`); corrected to `20` (`scvLedgerKeyContractInstance`). Verified against `@stellar/stellar-sdk` v17.1.0 `xdr.LedgerKey.contractData(...)` output.
+
+<!-- 2026-10-08 — Task 1 -->
 
 ### Fixed
 - `.eslintrc.json`: added `overrides` so `src/**/*.js` and `app.js` are parsed as ES modules (`sourceType: "module"`) and `tests/**/*.js` as CommonJS scripts (`env.node: true`, `sourceType: "script"`); eliminates four parse errors that failed CI.
 - `package.json`: `lint` script now includes `tests/` so test files are also linted.
-- `app.js` `strKeyToBytes`: version byte check was `0x02`; corrected to `0x10` (the Stellar strkey version byte for contract addresses, `2 << 3`). Added CRC16-XModem (poly=0x1021, little-endian) checksum validation so corrupt or wrong-prefix keys are rejected instead of silently decoded.
-- `app.js` `buildContractInstanceKey`: ScVal discriminant at offset 40 was `11` (`scvU256`); corrected to `20` (`scvLedgerKeyContractInstance`). Verified against `@stellar/stellar-sdk` v17.1.0 `xdr.LedgerKey.contractData(...)` output.
-- `package.json`: added `@stellar/stellar-sdk@17.1.0` as a dev-only dependency for the new Soroban unit tests.
-
-### Added
-- `tests/soroban.test.js`: 9 unit tests covering `strKeyToBytes` (valid decode, wrong prefix, wrong length, bad checksum, invalid base32 character) and `buildContractInstanceKey` (output matches SDK XDR, discriminant values, durability).
 
 <!-- 2026-10-04 -->
 
 ### Added
-- `src/utils.js`: pure utility functions extracted from `app.js` (`isValidStellarAddress`, `formatAmount`, `truncateMiddle`, `timeAgo`, `formatNative`, `escapeHtml`) as an ES module.
-- `src/api.js`: Horizon and Soroban RPC fetch logic as an ES module.
-- `src/render.js`: DOM render functions as an ES module.
-- `src/soroban.js`: Soroban XDR helpers and contract inspector as an ES module.
-- `tests/utils.test.js`: unit tests for all pure utility functions using `node:test`.
-- `.github/workflows/pages.yml`: GitHub Pages deploy workflow for static file publishing.
-- Freighter wallet connect button (read-only): fills the address field from the connected wallet; degrades gracefully when Freighter is not installed.
-- Contract events view in the Soroban panel: fetches recent events via Soroban RPC `getEvents`, decoded with the SDK and the same `escapeHtml` safety; "(SDK not loaded)" fallback if CDN fails.
-- Network selector (Mainnet / Testnet toggle) for the Horizon wallet lookup panel, matching the Soroban panel.
+- `src/utils.js`: pure utility functions (`isValidStellarAddress`, `formatAmount`, `truncateMiddle`, `timeAgo`, `formatNative`, `escapeHtml`) as an ES module.
+- `src/api.js`: Horizon and Soroban RPC fetch logic as an ES module, with timeout, 429 rate-limit, and network-error handling.
+- `src/render.js`: DOM render functions as an ES module; all fields escaped via `escapeHtml`.
+- `src/soroban.js`: Soroban XDR decode helpers (`decodeXdrEntry`, `decodeEvent`, `xdrValTypeLabel`) as an ES module.
+- `tests/utils.test.js`: 23 unit tests for all pure utility functions using `node:test`.
+- `.github/workflows/pages.yml`: GitHub Pages deploy workflow.
 
 ### Changed
-- `app.js` split into ES modules (`src/utils.js`, `src/api.js`, `src/render.js`, `src/soroban.js`); `app.js` is now a thin orchestrator that imports from those modules; no build step introduced.
 - `index.html`: added SRI hash (`integrity` + `crossorigin="anonymous"`) to the unpkg `@stellar/stellar-sdk@17.1.0` script tag.
-- `index.html`: added Freighter connect button; accessibility labels, `aria-live` regions, visible focus states, and `type="button"` on all buttons.
-- `package.json`: added `"test": "node --test tests/utils.test.js"` script.
-- `.github/workflows/ci.yml`: added `npm test` step and updated ESLint to lint the module files.
-- `SECURITY.md`: rewritten to be specific to this repository.
-- `CONTRIBUTING.md`: rewritten to be specific to this repository.
-- README.md: updated to describe the Soroban panel and the CDN-loaded SDK; added live GitHub Pages URL.
-
-### Fixed
-- Error and rate-limit handling for Horizon and Soroban RPC: user-visible messages for timeout, HTTP 429 (with retry-after or back-off), network failure, invalid account, and invalid contract ID; no silent failures.
-- Accessibility: labels for all inputs, visible focus rings, `aria-live` on result and error regions, keyboard operation of all controls.
+- `package.json`: added `"test"` script; `eslint` and `html-validate` added as devDependencies.
+- `.github/workflows/ci.yml`: added `npm test` step and `npx html-validate index.html`.
+- `SECURITY.md`: rewritten for this repository.
+- `CONTRIBUTING.md`: rewritten for this repository.
 
 <!-- 2026-09-20 -->
 
 ### Added
-- Soroban Contract Explorer panel (`index.html`, `app.js`, `styles.css`): enter a contract ID (C...), choose testnet or mainnet, read ledger entries through Soroban RPC `getLedgerEntries`.
+- Soroban Contract Explorer panel (`index.html`, `app.js`, `styles.css`): enter a contract ID (C...), choose testnet or mainnet, read ledger entries via Soroban RPC `getLedgerEntries`.
 
 ### Changed
-- Panel decodes entries with `@stellar/stellar-sdk` 17.1.0 loaded from unpkg (no npm dependency or build step): wasm hash and instance-storage count from the contract instance entry, ScVal to native conversion for other entries, `escapeHtml` for rendered values, raw XDR in a collapsible `<details>` element, "(SDK not loaded)" fallback with truncated XDR if the CDN fails.
+- Decodes entries with `@stellar/stellar-sdk` 17.1.0 loaded from unpkg: wasm hash and instance-storage count from the contract instance entry, `scValToNative` for other entries, `escapeHtml` on all rendered values, raw XDR in a collapsible `<details>` element, `(SDK not loaded)` fallback if CDN fails.
 
 ### Fixed
-- ESLint: `Buffer` is not defined (2 places in `app.js`; replaced `Buffer.from(...).toString('hex')` with an `Array.from` hex mapping and removed an unreachable `instanceof Buffer` branch).
-- html-validate: `void-style` (2 self-closing inputs) and missing `type='button'` on the search button.
+- ESLint: removed `Buffer` usage (not available in browser); replaced with `Array.from` hex mapping.
+- html-validate: void-style self-closing inputs and missing `type="button"` on buttons.
 
 ## [0.1.0] - 2026-09-02
 
@@ -93,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recent transactions list with hash truncation, operation count, relative timestamps (`timeAgo`), and success/failure badges
 - Paginated "Load More" transactions using Horizon cursor-based pagination
 - Copy-to-clipboard button for the full wallet address with visual success/failure feedback
-- `truncateMiddle()` utility for scannable address display throughout the UI (balances, transaction hashes)
+- `truncateMiddle()` utility for scannable address display throughout the UI
 - Two example address quick-launch buttons for immediate demo use
 - Responsive layout supporting desktop and mobile viewports
 - Deep links to [Stellar Expert](https://stellar.expert) explorer for each transaction hash
