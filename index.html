@@ -36,6 +36,7 @@
           Enter a Stellar public key to view balances, recent transactions, and account details.
         </p>
         <div class="search-bar">
+          <label for="addressInput" class="sr-only">Stellar public key</label>
           <input
             type="text"
             id="addressInput"
@@ -43,14 +44,24 @@
             placeholder="G... (Stellar public key)"
             autocomplete="off"
             spellcheck="false"
-            aria-label="Stellar public key"
           >
           <button type="button" id="searchBtn" class="search-btn" aria-label="Search wallet">
             <span class="btn-text">Search</span>
             <span class="btn-spinner hidden" aria-hidden="true">⏳</span>
           </button>
         </div>
-        <p id="errorMsg" class="error-msg hidden" role="alert"></p>
+
+        <!-- 4a: Horizon network selector -->
+        <div class="network-selector" role="group" aria-labelledby="horizonNetworkLabel">
+          <span id="horizonNetworkLabel" class="network-selector-label">Network:</span>
+          <label class="toggle-label">
+            <input type="checkbox" id="horizonTestnet">
+            Use Testnet
+          </label>
+        </div>
+
+        <p id="errorMsg" class="error-msg hidden" role="alert" aria-live="assertive"></p>
+
         <div class="example-addresses">
           <span class="example-label">Try an example:</span>
           <button type="button" class="example-btn" data-address="GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN">
@@ -63,7 +74,7 @@
       </section>
 
       <!-- Results Section (hidden until search) -->
-      <section id="resultsSection" class="results-section hidden">
+      <section id="resultsSection" class="results-section hidden" aria-live="polite" aria-atomic="false">
 
         <!-- Account Overview -->
         <div class="card account-card">
@@ -73,7 +84,7 @@
           </div>
           <div class="account-address-row">
             <span id="accountAddress" class="account-address"></span>
-            <button type="button" id="copyBtn" class="copy-btn" title="Copy address" aria-label="Copy address">
+            <button type="button" id="copyBtn" class="copy-btn" title="Copy address" aria-label="Copy address to clipboard">
               📋
             </button>
           </div>
@@ -130,6 +141,7 @@
         <p class="section-subtitle">Enter a Soroban contract ID to inspect its on-chain state via the Soroban RPC.</p>
 
         <div class="search-row">
+          <label for="contractInput" class="sr-only">Soroban contract ID</label>
           <input
             type="text"
             id="contractInput"
@@ -149,9 +161,9 @@
           </button>
         </div>
 
-        <p id="contractErrorMsg" class="error-msg hidden"></p>
+        <p id="contractErrorMsg" class="error-msg hidden" role="alert" aria-live="assertive"></p>
 
-        <div id="contractResults" class="hidden">
+        <div id="contractResults" class="hidden" aria-live="polite">
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">Contract Info</h3>
@@ -181,6 +193,15 @@
               <h3 class="card-title">Storage Entries</h3>
             </div>
             <div id="contractEntriesList" class="entries-list"></div>
+          </div>
+
+          <!-- 4b: Recent Events panel -->
+          <div class="card" id="contractEventsCard">
+            <div class="card-header">
+              <h3 class="card-title">Recent Events</h3>
+              <span id="contractEventsCount" class="badge"></span>
+            </div>
+            <div id="contractEventsList" class="entries-list" aria-live="polite"></div>
           </div>
         </div>
       </section>

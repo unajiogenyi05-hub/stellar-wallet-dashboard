@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- 2026-10-08 -->
 
+<!-- Tasks 4a / 4b / 4c -->
+
+### Added
+- **Network selector for Horizon** (4a): "Use Testnet" checkbox in the wallet search section wires `horizonUrl` to `HORIZON_TESTNET`; transaction explorer deep-links use `/explorer/testnet/` for testnet, `/explorer/public/` for mainnet.
+- **Recent Events panel** (4b): after a successful contract inspect, fetches up to 10 events via Soroban RPC `getEvents` (`filters: [{ type: "contract", contractIds: [id] }]`); topics and values decoded with `decodeEvent` from `src/soroban.js`; non-fatal on error.
+- **Accessibility** (4c): visually-hidden `<label>` elements for `#addressInput` and `#contractInput` (`.sr-only` class); `role="alert"` + `aria-live="assertive"` on both error paragraphs; `aria-live="polite"` on `#resultsSection` and `#contractResults`; visible focus rings via `:focus-visible`; `.sr-only`, `.network-selector`, and event-item styles added to `styles.css`.
+
+### Changed
+- `src/render.js` `renderTransactions`: added `network` parameter (`'mainnet'`|`'testnet'`) to set the correct stellar.expert explorer base URL.
+
+<!-- Task 3 -->
+
 ### Added
 - `tests/render.test.js`: 4 jsdom-based tests verifying that `escapeHtml` prevents XSS — a malicious `asset_code` value (`<img src=x onerror=...>`) produces no `<img>` or `<script>` DOM nodes after rendering.
 

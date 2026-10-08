@@ -716,3 +716,72 @@ a:hover, a:focus {
 .entry-raw-details summary:hover {
   color: var(--color-text);
 }
+
+/* ── Accessibility ───────────────────────────────────────────────────────── */
+
+/* Screen-reader-only: visually hidden but accessible to assistive tech */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Visible focus rings for all interactive elements */
+:focus-visible {
+  outline: 2px solid var(--color-primary, #6366f1);
+  outline-offset: 2px;
+}
+
+/* ── Network selector (Horizon panel) ────────────────────────────────────── */
+
+.network-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.network-selector-label {
+  font-weight: 500;
+}
+
+/* ── Contract events list ────────────────────────────────────────────────── */
+
+.event-item {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  font-size: 0.85rem;
+}
+
+.event-item:last-child {
+  border-bottom: none;
+}
+
+.event-meta {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.event-contract {
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+.event-topic {
+  margin-bottom: 0.15rem;
+}
+
+.event-value {
+  color: var(--color-text-muted);
+}

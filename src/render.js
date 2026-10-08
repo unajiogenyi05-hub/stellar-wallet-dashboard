@@ -90,8 +90,9 @@ export function renderBalances(balances) {
  * Render a list of transactions, optionally appending to existing ones.
  * @param {Array} transactions - Array of Horizon transaction records
  * @param {boolean} append - If true, append instead of replace
+ * @param {'mainnet'|'testnet'} [network='mainnet'] - Network for explorer links
  */
-export function renderTransactions(transactions, append = false) {
+export function renderTransactions(transactions, append = false, network = 'mainnet') {
   if (!append) {
     transactionsList.innerHTML = '';
   }
@@ -104,9 +105,13 @@ export function renderTransactions(transactions, append = false) {
     return;
   }
 
+  const explorerBase = network === 'testnet'
+    ? 'https://stellar.expert/explorer/testnet'
+    : 'https://stellar.expert/explorer/public';
+
   transactions.forEach((tx) => {
     const success = tx.successful;
-    const explorerUrl = `https://stellar.expert/explorer/public/tx/${encodeURIComponent(tx.hash)}`;
+    const explorerUrl = `${explorerBase}/tx/${encodeURIComponent(tx.hash)}`;
 
     const item = document.createElement('div');
     item.className = 'tx-item';
