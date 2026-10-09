@@ -20,12 +20,12 @@ and recent events via the Soroban RPC.
 - Recent transactions: hash, operation count, relative timestamps, success/failure badges
 - Account details: sequence number, subentry count, home domain, last modified ledger
 - Paginated "Load More" using Horizon cursor-based pagination
-- Testnet / Mainnet network selector
-- Optional Freighter wallet connect button (read-only; degrades gracefully if Freighter is not installed)
+- "Use Testnet" checkbox switches the Horizon lookup between mainnet and testnet (the transaction explorer links follow)
+- Timeout, rate-limit (429), network-failure and not-found errors are shown as messages
 
 **Soroban Contract Explorer panel**
-- Enter a contract ID (C...) and choose Testnet or Mainnet
-- Reads ledger entries via Soroban RPC `getLedgerEntries`
+- Enter a contract ID (C...; the checksum is verified) and choose Testnet or Mainnet (separate checkbox from the wallet panel)
+- Reads the contract instance entry via Soroban RPC `getLedgerEntries`
 - Decodes entries using `@stellar/stellar-sdk` 17.1.0 loaded from unpkg:
   - Wasm hash and instance-storage entry count from the contract instance entry
   - `scValToNative` conversion for other data entries
@@ -33,9 +33,10 @@ and recent events via the Soroban RPC.
 - "Recent Events" view using `getEvents`, decoded with the same SDK
 - `(SDK not loaded)` fallback with truncated XDR if the CDN script fails to load
 
-> **Note:** The Soroban panel makes live RPC calls and decodes XDR client-side.
-> It has not been tested with every contract storage layout; treat it as an
-> inspection tool, not a production data source.
+> **Note:** The Soroban panel shows the contract instance entry (not the contract's
+> other storage entries) and decodes XDR client-side. It was tried against one
+> testnet contract (the native XLM contract) and against mocked responses, not against
+> every contract layout; treat it as an inspection tool, not a production data source.
 
 ---
 
@@ -96,9 +97,11 @@ stellar-wallet-dashboard/
 │   ├── utils.js            # Pure utility functions (no DOM/network)
 │   ├── api.js              # Horizon and Soroban RPC fetch functions
 │   ├── render.js           # DOM render functions
-│   └── soroban.js          # XDR decoding helpers (SDK-dependent)
+│   └── soroban.js          # Contract ID/key helpers, XDR decoding (SDK-dependent)
 ├── tests/
-│   └── utils.test.js       # node:test unit tests for src/utils.js
+│   ├── utils.test.js       # node:test unit tests for src/utils.js
+│   ├── soroban.test.js     # contract ID decoding and ledger key building
+│   └── render.test.js      # jsdom tests: rendered values are escaped
 ├── README.md
 ├── CHANGELOG.md
 ├── SECURITY.md
@@ -120,7 +123,7 @@ stellar-wallet-dashboard/
 # Install dev tools
 npm ci
 
-# Run unit tests
+# Run unit tests (36 tests; Node 22 or newer)
 npm test
 
 # Lint
