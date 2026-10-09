@@ -283,9 +283,22 @@ async function inspectContract() {
       };
     });
 
-    contractWasmHash.textContent = globalWasmHash
-      ? `${globalWasmHash.slice(0, 32)}\u2026`
-      : entries.length > 0 ? '(stellar_asset or SDK unavailable)' : 'No entries found';
+    if (globalWasmHash) {
+      contractWasmHash.textContent = `${globalWasmHash.slice(0, 32)}\u2026`;
+    } else if (entries.length === 0) {
+      contractWasmHash.textContent = 'No entries found';
+    } else {
+      // decodeXdrEntry sets wasmHash = null for stellar_asset contracts (no wasm)
+      // and also when the SDK failed to load. Distinguish the two cases.
+      const { isStellarAsset } = decodeXdrEntry(
+        entries[0]?.xdr || '', 'instance'
+      );
+      if (isStellarAsset) {
+        contractWasmHash.textContent = 'Built-in Stellar asset contract (no wasm)';
+      } else {
+        contractWasmHash.textContent = '(SDK not loaded — XDR decode unavailable)';
+      }
+    }
 
     contractEntriesList.innerHTML = '';
     if (decoded.length === 0) {
@@ -354,7 +367,15 @@ async function inspectContract() {
 // ─── Contract Events (4b) ─────────────────────────────────────────────────────
 
 /**
- * Fetch recent contract events and render them in the events panel.
+ * ~24-hour ledger window. Stellar closes ~1 ledger every 5 seconds → 17280 per day.
+ * @type {number}
+ */
+const EVENTS_LEDGER_WINDOW = 17280;
+
+/**
+ * Fetch recent contract events and render the newest 10 in the events panel.
+ * Calls getLatestLedger first to compute a valid startLedger, fetches up to
+ * 200 events (oldest-first due to RPC ordering), then reverses to show newest.
  * Runs after ledger entries are shown; errors are non-fatal.
  * @param {string} contractId
  * @param {string} rpcUrl
@@ -369,78 +390,113 @@ async function fetchContractEvents(contractId, rpcUrl, isTestnet) {
     : 'https://stellar.expert/explorer/public';
 
   try {
+    // 1. Get the latest ledger so we can compute a valid startLedger.
+    const ledgerInfo = await sorobanRpc(rpcUrl, 'getLatestLedger', {});
+    const latestSeq = ledgerInfo && ledgerInfo.sequence ? ledgerInfo.sequence : 0;
+
+    // 2. Probe the retention window: try 24h back, fall back to oldestLedger if needed.
+    let startLedger = Math.max(latestSeq - EVENTS_LEDGER_WINDOW, 1);
+
+    // 3. Fetch up to 200 events (RPC returns oldest-first).
     const result = await sorobanRpc(rpcUrl, 'getEvents', {
+      startLedger,
       filters: [{ type: 'contract', contractIds: [contractId] }],
-      pagination: { limit: 10 },
+      pagination: { limit: 200 },
     });
 
-    const events = (result && result.events) || [];
-    contractEventsCount.textContent = `${events.length} shown`;
-
-    if (events.length === 0) {
-      const p = document.createElement('p');
-      p.style.cssText = 'color:var(--color-text-muted);font-size:0.875rem;';
-      p.textContent = 'No recent events found for this contract.';
-      contractEventsList.appendChild(p);
-      return;
+    // 4. If startLedger is before oldestLedger, retry with oldestLedger.
+    const oldestLedger = result && result.oldestLedger;
+    if (oldestLedger && startLedger < oldestLedger) {
+      startLedger = oldestLedger;
+      const retryResult = await sorobanRpc(rpcUrl, 'getEvents', {
+        startLedger,
+        filters: [{ type: 'contract', contractIds: [contractId] }],
+        pagination: { limit: 200 },
+      });
+      renderEvents(retryResult, explorerBase);
+    } else {
+      renderEvents(result, explorerBase);
     }
-
-    events.forEach((ev) => {
-      const { topic, value, type } = decodeEvent(ev);
-
-      const item = document.createElement('div');
-      item.className = 'event-item';
-
-      const meta = document.createElement('div');
-      meta.className = 'event-meta';
-
-      const typeSpan = document.createElement('span');
-      typeSpan.className = 'tx-tag';
-      typeSpan.textContent = type;
-
-      if (ev.ledger) {
-        const explorerLink = document.createElement('a');
-        explorerLink.href = `${explorerBase}/ledger/${encodeURIComponent(ev.ledger)}`;
-        explorerLink.target = '_blank';
-        explorerLink.rel = 'noopener';
-        explorerLink.textContent = `ledger ${ev.ledger}`;
-        meta.appendChild(typeSpan);
-        meta.appendChild(explorerLink);
-      } else {
-        meta.appendChild(typeSpan);
-      }
-      item.appendChild(meta);
-
-      const topicDiv = document.createElement('div');
-      topicDiv.className = 'event-topic';
-      const topicLabel = document.createElement('strong');
-      topicLabel.textContent = 'Topic: ';
-      const topicText = document.createElement('span');
-      topicText.innerHTML = topic; // already escaped by decodeEvent
-      topicDiv.appendChild(topicLabel);
-      topicDiv.appendChild(topicText);
-      item.appendChild(topicDiv);
-
-      if (value) {
-        const valueDiv = document.createElement('div');
-        valueDiv.className = 'event-value';
-        const valueLabel = document.createElement('strong');
-        valueLabel.textContent = 'Value: ';
-        const valueText = document.createElement('span');
-        valueText.innerHTML = value; // already escaped by decodeEvent
-        valueDiv.appendChild(valueLabel);
-        valueDiv.appendChild(valueText);
-        item.appendChild(valueDiv);
-      }
-
-      contractEventsList.appendChild(item);
-    });
-  } catch (_) {
+  } catch (err) {
     const p = document.createElement('p');
     p.style.cssText = 'color:var(--color-text-muted);font-size:0.875rem;';
-    p.textContent = 'Could not load events for this contract.';
+    // Show the real RPC error message, not a generic one.
+    p.textContent = err.message || 'Could not load events for this contract.';
     contractEventsList.appendChild(p);
   }
+}
+
+/**
+ * Render the newest 10 events from a getEvents result into the events panel.
+ * @param {object} result - Soroban RPC getEvents result
+ * @param {string} explorerBase
+ */
+function renderEvents(result, explorerBase) {
+  const allEvents = (result && result.events) || [];
+
+  // RPC returns oldest-first; reverse to get newest-first, then take 10.
+  const events = allEvents.slice().reverse().slice(0, 10);
+
+  contractEventsCount.textContent = `${events.length} shown`;
+
+  if (events.length === 0) {
+    const p = document.createElement('p');
+    p.style.cssText = 'color:var(--color-text-muted);font-size:0.875rem;';
+    p.textContent = 'No events in the last ~24 hours.';
+    contractEventsList.appendChild(p);
+    return;
+  }
+
+  events.forEach((ev) => {
+    const { topic, value, type } = decodeEvent(ev);
+
+    const item = document.createElement('div');
+    item.className = 'event-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'event-meta';
+
+    const typeSpan = document.createElement('span');
+    typeSpan.className = 'tx-tag';
+    typeSpan.textContent = type;
+
+    if (ev.ledger) {
+      const explorerLink = document.createElement('a');
+      explorerLink.href = `${explorerBase}/ledger/${encodeURIComponent(ev.ledger)}`;
+      explorerLink.target = '_blank';
+      explorerLink.rel = 'noopener';
+      explorerLink.textContent = `ledger ${ev.ledger}`;
+      meta.appendChild(typeSpan);
+      meta.appendChild(explorerLink);
+    } else {
+      meta.appendChild(typeSpan);
+    }
+    item.appendChild(meta);
+
+    const topicDiv = document.createElement('div');
+    topicDiv.className = 'event-topic';
+    const topicLabel = document.createElement('strong');
+    topicLabel.textContent = 'Topic: ';
+    const topicText = document.createElement('span');
+    topicText.innerHTML = topic; // already escaped by decodeEvent
+    topicDiv.appendChild(topicLabel);
+    topicDiv.appendChild(topicText);
+    item.appendChild(topicDiv);
+
+    if (value) {
+      const valueDiv = document.createElement('div');
+      valueDiv.className = 'event-value';
+      const valueLabel = document.createElement('strong');
+      valueLabel.textContent = 'Value: ';
+      const valueText = document.createElement('span');
+      valueText.innerHTML = value; // already escaped by decodeEvent
+      valueDiv.appendChild(valueLabel);
+      valueDiv.appendChild(valueText);
+      item.appendChild(valueDiv);
+    }
+
+    contractEventsList.appendChild(item);
+  });
 }
 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
