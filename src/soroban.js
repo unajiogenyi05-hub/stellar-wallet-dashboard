@@ -37,12 +37,13 @@ export function xdrValTypeLabel(scVal) {
  * Returns an object with:
  *  - `decoded` {string} — human-readable representation
  *  - `wasmHash` {string|null} — 64-char hex wasm hash (wasm instance entries only)
+ *  - `isStellarAsset` {boolean} — true when the contract is a built-in stellar_asset
  *
  * Falls back to a truncated raw XDR string if the SDK is not available.
  *
  * @param {string} xdrBase64 — base64-encoded XDR LedgerEntryData
  * @param {'instance'|'data'|'code'|string} entryType
- * @returns {{ decoded: string, wasmHash: string|null }}
+ * @returns {{ decoded: string, wasmHash: string|null, isStellarAsset: boolean }}
  */
 export function decodeXdrEntry(xdrBase64, entryType) {
   const sdk = (typeof window !== 'undefined') ? window.StellarSdk : undefined;
@@ -50,6 +51,7 @@ export function decodeXdrEntry(xdrBase64, entryType) {
     return {
       decoded: `(SDK not loaded) ${truncateMiddle(xdrBase64, 30, 30)}`,
       wasmHash: null,
+      isStellarAsset: false,
     };
   }
 
@@ -72,6 +74,7 @@ export function decodeXdrEntry(xdrBase64, entryType) {
           const instance = val.instance;
           if (instance) {
             const exec = instance.executable;
+            const isStellarAsset = !!(exec && exec.type === 'contractExecutableStellarAsset');
             if (exec && exec.type === 'contractExecutableWasm' && exec.wasmHash) {
               wasmHash = Array.from(exec.wasmHash)
                 .map((b) => b.toString(16).padStart(2, '0'))
@@ -81,14 +84,14 @@ export function decodeXdrEntry(xdrBase64, entryType) {
             const storage = instance.storage;
             const storageEntries = storage ? storage.length : 0;
 
-            const execLabel = exec && exec.type === 'contractExecutableStellarAsset'
+            const execLabel = isStellarAsset
               ? 'stellar_asset (no wasm)'
               : wasmHash
                 ? `wasm: ${wasmHash.slice(0, 16)}\u2026`
                 : '(wasm hash unavailable)';
 
             const decoded = `instance (${execLabel}, ${storageEntries} storage entries)`;
-            return { decoded, wasmHash };
+            return { decoded, wasmHash, isStellarAsset };
           }
         } catch (_) {
           // fall through to scValToNative
@@ -98,28 +101,29 @@ export function decodeXdrEntry(xdrBase64, entryType) {
       // Non-instance or fallback: try scValToNative
       try {
         const native = sdk.scValToNative(val);
-        return { decoded: formatNative(native), wasmHash };
+        return { decoded: formatNative(native), wasmHash, isStellarAsset: false };
       } catch (_) {
-        return { decoded: xdrValTypeLabel(val), wasmHash };
+        return { decoded: xdrValTypeLabel(val), wasmHash, isStellarAsset: false };
       }
     }
 
     if (arm === 'contractCode') {
-      return { decoded: '(contract WASM code entry)', wasmHash };
+      return { decoded: '(contract WASM code entry)', wasmHash, isStellarAsset: false };
     }
 
     // Generic fallback: try scValToNative on the raw base64
     try {
       const scVal = sdk.xdr.ScVal.fromXDR(xdrBase64, 'base64');
       const native = sdk.scValToNative(scVal);
-      return { decoded: formatNative(native), wasmHash };
+      return { decoded: formatNative(native), wasmHash, isStellarAsset: false };
     } catch (_) {
-      return { decoded: truncateMiddle(xdrBase64, 30, 30), wasmHash };
+      return { decoded: truncateMiddle(xdrBase64, 30, 30), wasmHash, isStellarAsset: false };
     }
   } catch (_) {
     return {
       decoded: `(SDK not loaded) ${truncateMiddle(xdrBase64, 30, 30)}`,
       wasmHash: null,
+      isStellarAsset: false,
     };
   }
 }

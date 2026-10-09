@@ -9,8 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- 2026-10-09 -->
 
+### Fixed
+- **Events panel: "startLedger must be positive" RPC error** (`app.js`): `fetchContractEvents` now calls `getLatestLedger` first, computes `startLedger = max(latestSequence - 17280, 1)` (~24 h window), requests up to 200 events, and displays the newest 10 (reversed). If `startLedger` falls before the RPC's `oldestLedger`, one automatic retry uses `oldestLedger` as the floor. The real RPC error message is shown in the panel instead of a generic string; an empty result shows "No events in the last ~24 hours."
+- **Wasm Hash line** (`app.js`, `src/soroban.js`): stellar_asset contracts now show "Built-in Stellar asset contract (no wasm)" instead of "(stellar_asset or SDK unavailable)"; the SDK-not-loaded case shows "(SDK not loaded — XDR decode unavailable)" separately. `decodeXdrEntry` now returns an `isStellarAsset` boolean.
+- **Mobile layout — Contract ID overflow** (`styles.css`): added `word-break: break-all; overflow-wrap: anywhere` for `.info-value.mono` so the 56-char contract ID and wasm hash no longer overflow the card on narrow screens.
+- **Mobile layout — unstyled contract input and Inspect button** (`styles.css`): `.address-input` and `.btn` classes now have the same background, border, padding, focus ring, and hover/active styles as `.search-input` and `.search-btn`.
+- **Missing Contract Info grid styles** (`styles.css`): added `.info-grid`, `.info-item`, `.info-label`, and `.info-value` rules that were referenced in `index.html` but undefined.
+
+### Added
+- `tests/events.test.js`: 6 unit tests asserting that `getEvents` requests always include a positive `startLedger`, that the retry logic fires when `startLedger < oldestLedger`, and that the newest 10 events are returned in descending order.
+
 ### Changed
-- README.md and SECURITY.md describe the current feature set: wallet network checkbox, contract instance entry plus recent events, current test files and counts, Soroban RPC and the unpkg SDK as third-party requests, and that no Content Security Policy is shipped yet.
+- `.eslintrc.json`: added `"argsIgnorePattern": "^_"` to `no-unused-vars` so intentionally-unused callback parameters prefixed with `_` do not generate warnings.
+
 
 <!-- 2026-10-08 -->
 

@@ -7,7 +7,7 @@
     "start": "npx serve .",
     "dev": "npx serve . --listen 8080",
     "lint": "npx eslint app.js src/ tests/",
-    "test": "node --test tests/utils.test.js tests/soroban.test.js tests/render.test.js"
+    "test": "node --test tests/utils.test.js tests/soroban.test.js tests/render.test.js tests/events.test.js"
   },
   "keywords": [
     "stellar",
