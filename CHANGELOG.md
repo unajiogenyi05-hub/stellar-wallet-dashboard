@@ -7,15 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-<!-- 2026-10-08 — fix CI Node version -->
+<!-- 2026-10-09 -->
+
+### Changed
+- README.md and SECURITY.md describe the current feature set: wallet network checkbox, contract instance entry plus recent events, current test files and counts, Soroban RPC and the unpkg SDK as third-party requests, and that no Content Security Policy is shipped yet.
+
+<!-- 2026-10-08 -->
 
 ### Fixed
 - `.github/workflows/ci.yml`: bump Node.js from 20 to 22; `html-validate@11.12.0` requires `^22.22.0 || >= 24.8.0` and uses `fs.globSync` which is unavailable in Node 20, causing `TypeError: fs.globSync is not a function` in the Validate HTML step.
 - `package.json`: updated `engines.node` from `>=18.0.0` to `>=22.0.0` to match the actual minimum required by devDependencies.
 
 <!-- 2026-10-08 -->
-
-<!-- Tasks 4a / 4b / 4c -->
 
 ### Added
 - **Network selector for Horizon** (4a): "Use Testnet" checkbox in the wallet search section wires `horizonUrl` to `HORIZON_TESTNET`; transaction explorer deep-links use `/explorer/testnet/` for testnet, `/explorer/public/` for mainnet.
@@ -25,13 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `src/render.js` `renderTransactions`: added `network` parameter (`'mainnet'`|`'testnet'`) to set the correct stellar.expert explorer base URL.
 
-<!-- Task 3 -->
-
 ### Added
 - `tests/render.test.js`: 4 jsdom-based tests verifying that `escapeHtml` prevents XSS — a malicious `asset_code` value (`<img src=x onerror=...>`) produces no `<img>` or `<script>` DOM nodes after rendering.
 
 ### Changed
-- `app.js`: converted to an ES module (`import`/`export`); imports utility, API, render, and Soroban functions from `src/`; deleted ~330 lines of duplicated implementations.
+- `app.js`: now an ES module that imports from `src/utils.js`, `src/api.js`, `src/render.js` and `src/soroban.js`; the duplicated implementations were deleted.
 - `index.html`: `<script src="app.js">` → `<script type="module" src="app.js">`.
 - `src/soroban.js` `decodeXdrEntry`: updated XDR access patterns for `@stellar/stellar-sdk` v17 (`ledgerData.type`, `ledgerData.contractData.val`, `instance.executable.type`) instead of the old `.switch().name` / `.val()` method-call style.
 - `package.json`: added `jsdom@25.0.1` devDependency; `npm test` now runs all three test files (36 tests).
@@ -39,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `app.js` `renderBalances`: the old monolith used bare `innerHTML` with unescaped `asset_code`/`asset_issuer`; the refactored version delegates to `src/render.js` which escapes all fields through `escapeHtml`.
 
-<!-- 2026-10-08 (Task 2) -->
+<!-- 2026-10-08 -->
 
 ### Fixed
 - `.eslintrc.json`: added `overrides` so `src/**/*.js` and `app.js` are parsed as ES modules (`sourceType: "module"`) and `tests/**/*.js` as CommonJS scripts (`env.node: true`, `sourceType: "script"`); eliminates four parse errors that failed CI.
@@ -60,23 +61,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/soroban.js`: Soroban XDR helpers and contract inspector as an ES module.
 - `tests/utils.test.js`: unit tests for all pure utility functions using `node:test`.
 - `.github/workflows/pages.yml`: GitHub Pages deploy workflow for static file publishing.
-- Freighter wallet connect button (read-only): fills the address field from the connected wallet; degrades gracefully when Freighter is not installed.
-- Contract events view in the Soroban panel: fetches recent events via Soroban RPC `getEvents`, decoded with the SDK and the same `escapeHtml` safety; "(SDK not loaded)" fallback if CDN fails.
-- Network selector (Mainnet / Testnet toggle) for the Horizon wallet lookup panel, matching the Soroban panel.
 
 ### Changed
-- `app.js` split into ES modules (`src/utils.js`, `src/api.js`, `src/render.js`, `src/soroban.js`); `app.js` is now a thin orchestrator that imports from those modules; no build step introduced.
 - `index.html`: added SRI hash (`integrity` + `crossorigin="anonymous"`) to the unpkg `@stellar/stellar-sdk@17.1.0` script tag.
-- `index.html`: added Freighter connect button; accessibility labels, `aria-live` regions, visible focus states, and `type="button"` on all buttons.
+- `index.html`: `type="button"` on all buttons.
 - `package.json`: added `"test": "node --test tests/utils.test.js"` script.
-- `.github/workflows/ci.yml`: added `npm test` step and updated ESLint to lint the module files.
+- `.github/workflows/ci.yml`: added `npm test` step.
 - `SECURITY.md`: rewritten to be specific to this repository.
 - `CONTRIBUTING.md`: rewritten to be specific to this repository.
 - README.md: updated to describe the Soroban panel and the CDN-loaded SDK; added live GitHub Pages URL.
-
-### Fixed
-- Error and rate-limit handling for Horizon and Soroban RPC: user-visible messages for timeout, HTTP 429 (with retry-after or back-off), network failure, invalid account, and invalid contract ID; no silent failures.
-- Accessibility: labels for all inputs, visible focus rings, `aria-live` on result and error regions, keyboard operation of all controls.
 
 <!-- 2026-09-20 -->
 

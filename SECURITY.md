@@ -16,14 +16,15 @@ The Stellar Wallet Dashboard is a **pure read-only browser application**. The fo
 |----------|--------|
 | **Private keys** | Never requested, never accepted, never processed |
 | **Seed phrases** | Never requested, never accepted, never processed |
-| **Backend server** | None — all requests go directly from the browser to the public Stellar Horizon API |
+| **Backend server** | None — requests go directly from the browser to the public Stellar Horizon API and Soroban RPC endpoints |
 | **Data storage** | None — no `localStorage`, no `sessionStorage`, no cookies, no IndexedDB |
-| **Data transmitted** | Only Stellar **public keys** (already publicly visible on-chain) |
+| **Data transmitted** | Only Stellar **public keys** and **contract IDs** (publicly visible on-chain) |
 | **Third-party tracking** | None |
+| **Third-party script** | `@stellar/stellar-sdk` is loaded from unpkg.com with a Subresource Integrity hash |
 
 The only data flow is:
 ```
-User enters public key → Browser fetches Horizon API → Data rendered to DOM → Nothing stored
+User enters public key or contract ID → Browser calls Horizon / Soroban RPC → Data rendered to DOM → Nothing stored
 ```
 
 All data displayed is already publicly available on the Stellar blockchain. There is no private information in this application.
@@ -56,7 +57,7 @@ Use GitHub's built-in private vulnerability reporting:
 - **XSS via Horizon API response data** — any field from the Horizon API rendered via `innerHTML` instead of `textContent` could allow injected script execution if a malicious actor controls account data on-chain
 - **Open redirect** — external links constructed from API data (e.g., transaction explorer URLs) that could redirect to malicious sites
 - **Prototype pollution** — malicious API responses that modify `Object.prototype` via unsafe JSON handling
-- **Content Security Policy gaps** — missing or misconfigured CSP headers that weaken XSS defenses
+- **Content Security Policy** — the app currently ships no CSP; a proposal to add one is welcome
 - **Dependency vulnerabilities** — known CVEs in `serve` or `eslint` dev dependencies
 
 ### Out of scope
